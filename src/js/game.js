@@ -1,3 +1,4 @@
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { LevelBuilder } from './levelBuilder.js';
@@ -95,8 +96,8 @@ export class Game {
         // Create the ground level
         this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme]);
         
-        // Use random level design instead of procedural
-        this.loadRandomLevelDesign();
+        // Load a tile-based level design
+        this.loadTileBasedLevel();
         
         // Create the player
         this.player = new Player(this.scene, this.colorSchemes[this.currentColorScheme]);
@@ -112,6 +113,9 @@ export class Game {
         // Initialize game state
         this.isRunning = true;
         this.lastFrameTime = performance.now();
+        
+        // Update the UI elements with the current color scheme
+        this.updateUIColors();
     }
 
     startGameLoop() {
@@ -180,7 +184,38 @@ export class Game {
 
     togglePause() {
         this.isPaused = !this.isPaused;
+        
         // Update UI for pause state
+        const pauseBtn = document.getElementById('pause-btn');
+        if (pauseBtn) {
+            if (this.isPaused) {
+                // Change to play button (triangle shape)
+                pauseBtn.innerHTML = '<div class="play-icon"></div>';
+                const playIcon = pauseBtn.querySelector('.play-icon');
+                if (playIcon) {
+                    playIcon.style.width = '0';
+                    playIcon.style.height = '0';
+                    playIcon.style.borderTop = '10px solid transparent';
+                    playIcon.style.borderBottom = '10px solid transparent';
+                    playIcon.style.borderLeft = '15px solid ' + this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
+                    playIcon.style.boxShadow = '0 0 5px ' + this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
+                    playIcon.style.marginLeft = '3px';
+                }
+            } else {
+                // Change back to pause button (two vertical lines)
+                pauseBtn.innerHTML = '<div></div><div></div>';
+                const pauseBars = pauseBtn.querySelectorAll('div');
+                const accentColor = this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
+                pauseBars.forEach(bar => {
+                    bar.style.width = '5px';
+                    bar.style.height = '20px';
+                    bar.style.backgroundColor = accentColor;
+                    bar.style.margin = '0 3px';
+                    bar.style.boxShadow = '0 0 5px ' + accentColor;
+                    bar.style.borderRadius = '2px';
+                });
+            }
+        }
     }
 
     gameOver() {
@@ -260,6 +295,23 @@ export class Game {
         }
     }
 
+    // Load a tile-based level design for the game
+    loadTileBasedLevel() {
+        // Use the predefined level designs
+        const levelDesigns = this.getDefaultLevelDesigns();
+        
+        // Determine which level to load based on the current level number
+        // For level 1, start with the tutorial level
+        if (this.currentLevel === 1) {
+            this.level.createFromASCII(levelDesigns.tutorial);
+        } else {
+            // For other levels, select randomly from the remaining designs
+            const availableLevels = Object.keys(levelDesigns).filter(key => key !== 'tutorial');
+            const selectedKey = availableLevels[Math.floor(Math.random() * availableLevels.length)];
+            this.level.createFromASCII(levelDesigns[selectedKey]);
+        }
+    }
+
     onWindowResize() {
         // Update renderer size
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -300,8 +352,8 @@ export class Game {
         // Create new level with new color scheme
         this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme]);
         
-        // Use random predefined level designs
-        this.loadRandomLevelDesign();
+        // Load a tile-based level design
+        this.loadTileBasedLevel();
         
         // Update player colors
         this.player.updateColors(this.colorSchemes[this.currentColorScheme]);
@@ -314,6 +366,9 @@ export class Game {
         
         // Speed up slightly with each level
         this.gameSpeed = 7 + (this.currentLevel - 1) * 0.5;
+        
+        // Update UI colors to match new color scheme
+        this.updateUIColors();
     }
     
     createTeleportEffect() {
@@ -586,6 +641,48 @@ NOTE:
         if (this.collisionDetector && this.collisionDetector.checkPortalCollision()) {
             // Level completed
             this.nextLevel();
+        }
+    }
+
+    // Helper function to convert color numbers to hex strings
+    convertToHex(colorNum) {
+        return '#' + colorNum.toString(16).padStart(6, '0');
+    }
+    
+    // Update UI elements with current color scheme
+    updateUIColors() {
+        // Get current colors
+        const accentColor = this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
+        const playerColor = this.convertToHex(this.colorSchemes[this.currentColorScheme].player);
+        
+        // Update pause button
+        const pauseBtn = document.getElementById('pause-btn');
+        if (pauseBtn) {
+            pauseBtn.style.borderColor = accentColor;
+            pauseBtn.style.boxShadow = `0 0 10px ${accentColor}, inset 0 0 5px ${accentColor}`;
+            
+            const pauseBars = pauseBtn.querySelectorAll('div');
+            pauseBars.forEach(bar => {
+                bar.style.backgroundColor = accentColor;
+                bar.style.boxShadow = `0 0 5px ${accentColor}`;
+            });
+        }
+        
+        // Update retry button in the original game-over UI
+        const retryBtn = document.getElementById('retry-btn');
+        if (retryBtn) {
+            retryBtn.style.color = accentColor;
+            retryBtn.style.borderColor = accentColor;
+            retryBtn.style.boxShadow = `0 0 10px ${accentColor}`;
+            retryBtn.style.textShadow = `0 0 5px ${accentColor}`;
+        }
+        
+        // Update game-over UI
+        const gameOverUI = document.getElementById('game-over');
+        if (gameOverUI) {
+            gameOverUI.style.color = playerColor;
+            gameOverUI.style.borderColor = accentColor;
+            gameOverUI.style.boxShadow = `0 0 20px ${accentColor}, inset 0 0 10px ${accentColor}`;
         }
     }
 } 
