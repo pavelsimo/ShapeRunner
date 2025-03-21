@@ -100,7 +100,7 @@ export class LevelManager {
      * Generate a complete level by combining multiple level titles
      * @param {number} levelNumber - The level number to generate
      * @param {number} difficulty - Difficulty level (1-5)
-     * @returns {string} The combined ASCII level layout
+     * @returns {Object} The combined level layout and theme
      */
     generateLevel(levelNumber, difficulty = 1) {
         this.currentLevel = levelNumber;
@@ -127,6 +127,26 @@ export class LevelManager {
         for (let i = 0; i < sectionCount; i++) {
             const randomIndex = Math.floor(Math.random() * availableTitles.length);
             selectedTitles.push(availableTitles[randomIndex]);
+        }
+        
+        // Get a theme from one of the selected titles or create a default theme
+        let theme = null;
+        // Try to find a theme in the selected titles
+        for (const title of [startTitle, ...selectedTitles, endTitle]) {
+            if (title.theme) {
+                theme = title.theme;
+                break;
+            }
+        }
+        
+        // If no theme was found, use a default theme
+        if (!theme) {
+            theme = {
+                background: "#000000",
+                platforms: "#0088ff",
+                player: "#ff4500",
+                accent: "#00ff88"
+            };
         }
         
         // Build the complete level by combining titles horizontally
@@ -170,6 +190,9 @@ export class LevelManager {
         // Convert the 2D array back to a string format
         const levelString = combinedLevel.map(row => row.join('')).join('\n');
         
-        return levelString;
+        return {
+            level: levelString,
+            theme: theme
+        };
     }
 } 

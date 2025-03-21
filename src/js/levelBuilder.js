@@ -154,115 +154,206 @@ export class LevelBuilder {
         };
     }
 
-    createPlatform(x, y, width, height) {
-        // Create a platform with enhanced Tron-like glow
+    createPlatform(x, y, width, height, isJumpPad = false) {
+        // Apply Tron-like style to platforms with strong glow
         const platformGroup = new THREE.Group();
         
-        // Create outer platform (main shape)
-        const outerGeometry = new THREE.PlaneGeometry(width, height);
-        const outerMaterial = new THREE.MeshBasicMaterial({
-            color: this.colors.platforms,
-            transparent: false,
-            opacity: 1
-        });
-        
-        const outerPlatform = new THREE.Mesh(outerGeometry, outerMaterial);
-        
-        // Create inner platform (slightly darker)
-        const innerGeometry = new THREE.PlaneGeometry(width * 0.9, height * 0.9);
-        const innerMaterial = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(this.colors.platforms).multiplyScalar(0.7),
-            transparent: false,
-            opacity: 1
-        });
-        
-        const innerPlatform = new THREE.Mesh(innerGeometry, innerMaterial);
-        innerPlatform.position.z = 0.01;
-        
-        // Add Tron-like border glow effect
-        const edgesGeometry = new THREE.EdgesGeometry(outerGeometry);
-        const edgesMaterial = new THREE.LineBasicMaterial({ 
-            color: 0xffffff, // Bright white for Tron effect
-            linewidth: 2,
+        // Main platform body - black core with neon outline
+        const platformGeometry = new THREE.BoxGeometry(width, height, 1);
+        const platformMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000, // Black interior
             transparent: true,
-            opacity: 0.9
+            opacity: 0.7
+        });
+        const platformMesh = new THREE.Mesh(platformGeometry, platformMaterial);
+        platformGroup.add(platformMesh);
+        
+        // Edge outline for bright neon effect
+        const edgesGeometry = new THREE.EdgesGeometry(platformGeometry);
+        const edgesMaterial = new THREE.LineBasicMaterial({
+            color: this.colors.platforms,
+            linewidth: 3,
+            transparent: false,
+            opacity: 1.0
         });
         const edges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
-        edges.position.z = 0.02;
+        edges.position.z = 0.01;
+        platformGroup.add(edges);
         
-        // Create primary glow effect
-        const glowGeometry = new THREE.PlaneGeometry(width + 0.2, height + 0.2);
+        // Create strong outer glow for platforms
+        const glowSize = 0.4;
+        const glowGeometry = new THREE.PlaneGeometry(width + glowSize, height + glowSize);
         const glowMaterial = new THREE.MeshBasicMaterial({
+            color: this.colors.platforms,
+            transparent: true,
+            opacity: 0.6,
+            side: THREE.DoubleSide
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.z = -0.01;
+        platformGroup.add(glow);
+        
+        // Create second, larger glow for more intense effect
+        const outerGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 2, height + glowSize * 2);
+        const outerGlowMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.platforms,
             transparent: true,
             opacity: 0.3,
             side: THREE.DoubleSide
         });
-        
-        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-        glow.position.z = -0.01;
-        
-        // Create outer glow for more intense effect
-        const outerGlowGeometry = new THREE.PlaneGeometry(width + 0.4, height + 0.4);
-        const outerGlowMaterial = new THREE.MeshBasicMaterial({
-            color: this.colors.platforms,
-            transparent: true,
-            opacity: 0.15,
-            side: THREE.DoubleSide
-        });
-        
         const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
         outerGlow.position.z = -0.02;
-        
-        // Add platform parts to group
         platformGroup.add(outerGlow);
-        platformGroup.add(glow);
-        platformGroup.add(outerPlatform);
-        platformGroup.add(innerPlatform);
-        platformGroup.add(edges);
         
-        // Position platform
-        platformGroup.position.set(x, y, 0);
-        
-        // Add animation for neon glow effect
-        platformGroup.userData.glowIntensity = 1.0;
-        platformGroup.userData.glowDirection = 1;
-        platformGroup.userData.animationFrame = null;
-        
-        const animate = () => {
-            // Subtle pulse effect
-            platformGroup.userData.glowIntensity += 0.015 * platformGroup.userData.glowDirection;
+        // Add grid lines for Tron effect
+        if (width > 2 && height > 1) {
+            const gridLines = new THREE.Group();
+            const gridMaterial = new THREE.LineBasicMaterial({
+                color: this.colors.platforms,
+                linewidth: 1,
+                transparent: true,
+                opacity: 0.4
+            });
             
-            // Reverse direction when reaching limits
-            if (platformGroup.userData.glowIntensity > 1.3) {
-                platformGroup.userData.glowDirection = -1;
-            } else if (platformGroup.userData.glowIntensity < 0.7) {
-                platformGroup.userData.glowDirection = 1;
+            // Horizontal grid lines
+            const hSegments = Math.floor(width / 1.5);
+            for (let i = 1; i < hSegments; i++) {
+                const lineGeometry = new THREE.BufferGeometry();
+                const lineSpacing = (width * 0.9) / hSegments;
+                const x1 = -width/2 + lineSpacing * i;
+                
+                const points = [
+                    new THREE.Vector3(x1, -height/2 + 0.1, 0.03),
+                    new THREE.Vector3(x1, height/2 - 0.1, 0.03)
+                ];
+                
+                lineGeometry.setFromPoints(points);
+                const line = new THREE.Line(lineGeometry, gridMaterial);
+                gridLines.add(line);
             }
             
-            // Update glow opacity based on intensity
-            glow.material.opacity = 0.3 * platformGroup.userData.glowIntensity;
-            outerGlow.material.opacity = 0.15 * platformGroup.userData.glowIntensity;
+            // Vertical grid lines for larger platforms
+            if (height > 1.5) {
+                const vSegments = Math.floor(height / 0.8);
+                for (let i = 1; i < vSegments; i++) {
+                    const lineGeometry = new THREE.BufferGeometry();
+                    const lineSpacing = (height * 0.9) / vSegments;
+                    const y1 = -height/2 + lineSpacing * i;
+                    
+                    const points = [
+                        new THREE.Vector3(-width/2 + 0.1, y1, 0.03),
+                        new THREE.Vector3(width/2 - 0.1, y1, 0.03)
+                    ];
+                    
+                    lineGeometry.setFromPoints(points);
+                    const line = new THREE.Line(lineGeometry, gridMaterial);
+                    gridLines.add(line);
+                }
+            }
+            
+            platformGroup.add(gridLines);
+        }
+        
+        // If it's a jump pad, add a special indicator
+        if (isJumpPad) {
+            const indicatorGeometry = new THREE.BoxGeometry(width * 0.7, height * 0.3, 0.1);
+            const indicatorMaterial = new THREE.MeshBasicMaterial({
+                color: this.colors.accent,
+                transparent: true,
+                opacity: 0.8
+            });
+            const indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
+            indicator.position.z = 0.04;
+            
+            // Add neon outline to jump pad indicator
+            const indicatorEdges = new THREE.LineSegments(
+                new THREE.EdgesGeometry(indicatorGeometry),
+                new THREE.LineBasicMaterial({
+                    color: 0xffffff,
+                    linewidth: 2,
+                    transparent: true,
+                    opacity: 0.9
+                })
+            );
+            indicator.add(indicatorEdges);
+            
+            // Add pulsing animation to jump pad
+            indicator.userData.pulse = true;
+            indicator.userData.pulseDirection = 1;
+            indicator.userData.pulseIntensity = 1;
+            
+            // Add animation function to the scene's update loop
+            const animate = () => {
+                if (indicator.userData.pulse) {
+                    // Pulse effect
+                    indicator.userData.pulseIntensity += 0.05 * indicator.userData.pulseDirection;
+                    if (indicator.userData.pulseIntensity > 1.5) {
+                        indicator.userData.pulseDirection = -1;
+                    } else if (indicator.userData.pulseIntensity < 0.5) {
+                        indicator.userData.pulseDirection = 1;
+                    }
+                    
+                    // Apply scale and opacity changes
+                    const scale = indicator.userData.pulseIntensity;
+                    indicator.scale.set(1, scale, 1);
+                    indicator.material.opacity = 0.8 * indicator.userData.pulseIntensity;
+                    
+                    // Continue animation
+                    requestAnimationFrame(animate);
+                }
+            };
+            
+            // Start animation
+            animate();
+            
+            platformGroup.add(indicator);
+        }
+        
+        // Add pulsing animation to the platform glow
+        platformGroup.userData.pulseDirection = 1;
+        platformGroup.userData.pulseIntensity = 1;
+        platformGroup.userData.animationFrame = null;
+        
+        const animateGlow = () => {
+            // Subtle pulse effect
+            platformGroup.userData.pulseIntensity += 0.015 * platformGroup.userData.pulseDirection;
+            
+            // Reverse direction at limits
+            if (platformGroup.userData.pulseIntensity > 1.3) {
+                platformGroup.userData.pulseDirection = -1;
+            } else if (platformGroup.userData.pulseIntensity < 0.7) {
+                platformGroup.userData.pulseDirection = 1;
+            }
+            
+            // Update glow opacity and scale based on intensity
+            const intensity = platformGroup.userData.pulseIntensity;
+            glow.material.opacity = 0.6 * intensity;
+            outerGlow.material.opacity = 0.3 * intensity;
             
             // Continue animation if platform is in the scene
             if (platformGroup.parent) {
-                platformGroup.userData.animationFrame = requestAnimationFrame(animate);
+                platformGroup.userData.animationFrame = requestAnimationFrame(animateGlow);
             }
         };
         
         // Start animation
-        platformGroup.userData.animationFrame = requestAnimationFrame(animate);
+        platformGroup.userData.animationFrame = requestAnimationFrame(animateGlow);
         
-        // Add to scene
+        // Position platform group
+        platformGroup.position.set(x, y, 0);
+        
+        // Add platform to scene
         this.scene.add(platformGroup);
         
-        // Return platform object with metadata for collision detection
+        // Return platform data
         return {
             mesh: platformGroup,
             x: x,
             y: y,
             width: width,
             height: height,
+            isJumpPad: isJumpPad,
+            jumpForce: isJumpPad ? 20 : 0,
             type: 'platform',
             cleanup: () => {
                 // Cancel animation frame if it exists
@@ -270,18 +361,6 @@ export class LevelBuilder {
                     cancelAnimationFrame(platformGroup.userData.animationFrame);
                     platformGroup.userData.animationFrame = null;
                 }
-                
-                // Dispose of geometries and materials
-                outerGeometry.dispose();
-                outerMaterial.dispose();
-                innerGeometry.dispose();
-                innerMaterial.dispose();
-                edgesGeometry.dispose();
-                edgesMaterial.dispose();
-                glowGeometry.dispose();
-                glowMaterial.dispose();
-                outerGlowGeometry.dispose();
-                outerGlowMaterial.dispose();
             }
         };
     }
@@ -482,6 +561,170 @@ export class LevelBuilder {
             width: size,
             height: size,
             type: 'portal'
+        };
+    }
+
+    createTriangle(x, y, size, direction = 'up') {
+        // Apply enhanced Tron-like style to triangles (spikes)
+        const triangleGroup = new THREE.Group();
+        
+        // Create the triangle shape
+        const shapeGeometry = new THREE.BufferGeometry();
+        let vertices;
+        
+        // Set vertices based on direction
+        if (direction === 'up') {
+            vertices = new Float32Array([
+                -size/2, -size/2, 0,
+                size/2, -size/2, 0,
+                0, size/2, 0
+            ]);
+        } else if (direction === 'down') {
+            vertices = new Float32Array([
+                -size/2, size/2, 0,
+                size/2, size/2, 0,
+                0, -size/2, 0
+            ]);
+        } else if (direction === 'left') {
+            vertices = new Float32Array([
+                size/2, -size/2, 0,
+                size/2, size/2, 0,
+                -size/2, 0, 0
+            ]);
+        } else { // right
+            vertices = new Float32Array([
+                -size/2, -size/2, 0,
+                -size/2, size/2, 0,
+                size/2, 0, 0
+            ]);
+        }
+        
+        shapeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        shapeGeometry.computeVertexNormals();
+        
+        // Main body (black with bright outline for Tron effect)
+        const triangleMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000, // Black interior
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
+        const triangleMesh = new THREE.Mesh(shapeGeometry, triangleMaterial);
+        triangleGroup.add(triangleMesh);
+        
+        // Use more striking color for hazards based on the images
+        const hazardColor = 0xFFDD00; // Yellow/gold for hazards like in second image
+        
+        // Bright neon edge outline
+        const edgesMaterial = new THREE.LineBasicMaterial({
+            color: hazardColor,
+            linewidth: 3,
+            transparent: false,
+            opacity: 1
+        });
+        
+        // Create edges for triangle
+        const edges = new THREE.Line(new THREE.BufferGeometry(), edgesMaterial);
+        const edgeVertices = [];
+        
+        if (direction === 'up' || direction === 'down') {
+            edgeVertices.push(vertices[0], vertices[1], vertices[2]);
+            edgeVertices.push(vertices[3], vertices[4], vertices[5]);
+            edgeVertices.push(vertices[6], vertices[7], vertices[8]);
+            edgeVertices.push(vertices[0], vertices[1], vertices[2]);
+        } else {
+            edgeVertices.push(vertices[0], vertices[1], vertices[2]);
+            edgeVertices.push(vertices[3], vertices[4], vertices[5]);
+            edgeVertices.push(vertices[6], vertices[7], vertices[8]);
+            edgeVertices.push(vertices[0], vertices[1], vertices[2]);
+        }
+        
+        edges.geometry.setAttribute('position', new THREE.Float32BufferAttribute(edgeVertices, 3));
+        edges.position.z = 0.01;
+        triangleGroup.add(edges);
+        
+        // Create first glow layer
+        const glowGeometry = new THREE.BufferGeometry();
+        glowGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: hazardColor,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide
+        });
+        
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.scale.set(1.2, 1.2, 1.2);
+        glow.position.z = -0.01;
+        triangleGroup.add(glow);
+        
+        // Create second, larger glow for more intense effect
+        const outerGlowGeometry = new THREE.BufferGeometry();
+        outerGlowGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        
+        const outerGlowMaterial = new THREE.MeshBasicMaterial({
+            color: hazardColor,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        
+        const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+        outerGlow.scale.set(1.5, 1.5, 1.5);
+        outerGlow.position.z = -0.02;
+        triangleGroup.add(outerGlow);
+        
+        // Position triangle group
+        triangleGroup.position.set(x, y, 0);
+        
+        // Add animation for triangle glow pulsing
+        triangleGroup.userData.pulseDirection = 1;
+        triangleGroup.userData.pulseIntensity = 1;
+        triangleGroup.userData.animationFrame = null;
+        
+        const animate = () => {
+            // Pulse effect
+            triangleGroup.userData.pulseIntensity += 0.03 * triangleGroup.userData.pulseDirection;
+            if (triangleGroup.userData.pulseIntensity > 1.3) {
+                triangleGroup.userData.pulseDirection = -1;
+            } else if (triangleGroup.userData.pulseIntensity < 0.7) {
+                triangleGroup.userData.pulseDirection = 1;
+            }
+            
+            // Apply opacity and scale changes to glow
+            const intensity = triangleGroup.userData.pulseIntensity;
+            glow.material.opacity = 0.5 * intensity;
+            outerGlow.material.opacity = 0.3 * intensity;
+            
+            // Continue animation if still in the scene
+            if (triangleGroup.parent) {
+                triangleGroup.userData.animationFrame = requestAnimationFrame(animate);
+            }
+        };
+        
+        // Start animation
+        triangleGroup.userData.animationFrame = requestAnimationFrame(animate);
+        
+        // Add to scene
+        this.scene.add(triangleGroup);
+        
+        // Return triangle data
+        return {
+            mesh: triangleGroup,
+            x: x,
+            y: y,
+            width: size,
+            height: size,
+            type: 'spike',
+            direction: direction,
+            cleanup: () => {
+                // Cancel animation frame if it exists
+                if (triangleGroup.userData.animationFrame) {
+                    cancelAnimationFrame(triangleGroup.userData.animationFrame);
+                    triangleGroup.userData.animationFrame = null;
+                }
+            }
         };
     }
 } 

@@ -471,7 +471,7 @@
                         
                         // Create scene
                         this.scene = new THREE.Scene();
-                        this.scene.background = new THREE.Color(this.colors.background);
+                        this.scene.background = new THREE.Color(0x0A0A55); // Deeper blue like in the image
                         
                         // Create camera
                         const aspectRatio = window.innerWidth / window.innerHeight;
@@ -487,6 +487,9 @@
                         // Add light
                         const light = new THREE.AmbientLight(0xFFFFFF, 1);
                         this.scene.add(light);
+                        
+                        // Create Tron grid
+                        this.createGrid();
                         
                         // Create player
                         this.createPlayer();
@@ -505,22 +508,222 @@
                     }
                 }
                 
-                createPlayer() {
-                    // Player geometry
-                    this.playerGeometry = new THREE.BoxGeometry(this.playerSize, this.playerSize, this.playerSize);
-                    this.playerMaterial = new THREE.MeshBasicMaterial({ color: this.colors.player });
+                createGrid() {
+                    // Grid size and properties
+                    const gridSize = 1000;
+                    const gridDivisions = 100;
+                    const gridColor = 0x1144AA; // Darker blue grid lines to match image
                     
-                    // Create player mesh
-                    this.player = new THREE.Mesh(this.playerGeometry, this.playerMaterial);
-                    this.player.position.set(-5, this.groundY + this.playerSize/2 + 0.5, 0); // Position player ABOVE the ground
+                    // Create grid with lines
+                    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
+                    gridHelper.position.y = this.groundY - 0.4; // Slightly below ground
+                    gridHelper.material.transparent = true;
+                    gridHelper.material.opacity = 0.2;
+                    gridHelper.material.blending = THREE.AdditiveBlending;
+                    this.scene.add(gridHelper);
+                    
+                    // Rotate grid to make it horizontal
+                    gridHelper.rotation.x = Math.PI / 2;
+                    
+                    // Add a plane with a grid texture for additional effect
+                    const gridPlaneGeometry = new THREE.PlaneGeometry(gridSize, gridSize);
+                    const gridPlaneMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x0A0A44, // Very dark blue background
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const gridPlane = new THREE.Mesh(gridPlaneGeometry, gridPlaneMaterial);
+                    gridPlane.position.y = this.groundY - 0.45; // Just below the grid
+                    gridPlane.rotation.x = -Math.PI / 2;
+                    this.scene.add(gridPlane);
+                }
+                
+                createPlayer() {
+                    // Create a composite player object to match the reference image
+                    this.player = new THREE.Group();
+                    this.player.position.set(-5, this.groundY + this.playerSize/2 + 0.5, 0);
                     this.scene.add(this.player);
+                    
+                    // Create the main square shape without rotation (matches image)
+                    const mainGeometry = new THREE.BoxGeometry(this.playerSize, this.playerSize, this.playerSize * 0.5);
+                    const mainMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x00FFFF, // Bright cyan like in the image
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const mainMesh = new THREE.Mesh(mainGeometry, mainMaterial);
+                    // No rotation - keep as square
+                    this.player.add(mainMesh);
+                    this.playerMainMesh = mainMesh;
+                    
+                    // Create inner box
+                    const innerGeometry = new THREE.BoxGeometry(this.playerSize * 0.6, this.playerSize * 0.6, this.playerSize * 0.5);
+                    const innerMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x0088FF, 
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
+                    this.player.add(innerMesh);
+                    
+                    // Add bright center point
+                    const centerGeometry = new THREE.BoxGeometry(this.playerSize * 0.2, this.playerSize * 0.2, this.playerSize * 0.2);
+                    const centerMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0xFFFFFF,
+                        transparent: false
+                    });
+                    const centerMesh = new THREE.Mesh(centerGeometry, centerMaterial);
+                    this.player.add(centerMesh);
+                    
+                    // Add edge lines 
+                    const edges = new THREE.EdgesGeometry(mainGeometry);
+                    const lineMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0x40FFFF, 
+                        linewidth: 2
+                    });
+                    const wireframe = new THREE.LineSegments(edges, lineMaterial);
+                    this.player.add(wireframe);
+                    
+                    // Create outer glow
+                    const glowGeometry = new THREE.BoxGeometry(
+                        this.playerSize * 1.3, 
+                        this.playerSize * 1.3, 
+                        this.playerSize * 0.5
+                    );
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00FFFF,
+                        transparent: true,
+                        opacity: 0.3,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                    this.player.add(glowMesh);
+                    this.playerGlow = glowMesh;
+                    
+                    // Add a trailing effect made of particles
+                    this.trailParticles = [];
+                    const particleCount = 5;
+                    for (let i = 0; i < particleCount; i++) {
+                        const size = this.playerSize * (0.3 + (i * 0.1));
+                        const trailGeometry = new THREE.BoxGeometry(size, size, size * 0.3);
+                        const trailMaterial = new THREE.MeshBasicMaterial({
+                            color: 0x00FFFF,
+                            transparent: true,
+                            opacity: 0.2 - (i * 0.03),
+                            blending: THREE.AdditiveBlending
+                        });
+                        const trailParticle = new THREE.Mesh(trailGeometry, trailMaterial);
+                        trailParticle.position.x = -0.5 - (i * 0.2);
+                        this.scene.add(trailParticle);
+                        this.trailParticles.push(trailParticle);
+                    }
+                    
+                    // Initialize jump particle system
+                    this.jumpParticles = [];
+                    this.jumpPath = null;
+                    this.jumpHistoryPoints = [];
                     
                     // Player physics
                     this.playerVelocity = { x: 5, y: 0 }; // Set x velocity to 5 to move forward
                     this.isJumping = false;
                     this.onGround = false;
                     
-                    logDebug("Player created with forward velocity: " + this.playerVelocity.x);
+                    logDebug("Player created with Tron-like appearance");
+                }
+                
+                // Create jump particles effect
+                createJumpParticles() {
+                    // Clear any existing jump particles
+                    this.jumpParticles.forEach(particle => {
+                        this.scene.remove(particle);
+                    });
+                    this.jumpParticles = [];
+                    
+                    // Create new particles
+                    const particleCount = 10;
+                    for (let i = 0; i < particleCount; i++) {
+                        const size = 0.1 + Math.random() * 0.2;
+                        const particleGeometry = new THREE.BoxGeometry(size, size, size);
+                        const particleMaterial = new THREE.MeshBasicMaterial({
+                            color: 0x40FFFF,
+                            transparent: true,
+                            opacity: 0.7,
+                            blending: THREE.AdditiveBlending
+                        });
+                        
+                        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                        
+                        // Position around player's feet
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = 0.3 + Math.random() * 0.3;
+                        const offsetX = Math.cos(angle) * radius;
+                        const offsetY = Math.sin(angle) * radius;
+                        
+                        particle.position.set(
+                            this.player.position.x + offsetX,
+                            this.player.position.y - this.playerSize/2 + offsetY,
+                            0
+                        );
+                        
+                        // Add velocity for animation
+                        particle.userData.velocityX = offsetX * 2;
+                        particle.userData.velocityY = 2 + Math.random() * 3;
+                        particle.userData.life = 1.0; // Full life
+                        
+                        this.scene.add(particle);
+                        this.jumpParticles.push(particle);
+                    }
+                    
+                    // Reset jump path tracking
+                    this.jumpHistoryPoints = [];
+                    this.jumpHistoryPoints.push(new THREE.Vector3(
+                        this.player.position.x,
+                        this.player.position.y,
+                        0
+                    ));
+                    
+                    // Remove any existing jump path
+                    if (this.jumpPath) {
+                        this.scene.remove(this.jumpPath);
+                        this.jumpPath = null;
+                    }
+                }
+                
+                // Update jump path visualization
+                updateJumpPath() {
+                    // Add current position to jump history
+                    this.jumpHistoryPoints.push(new THREE.Vector3(
+                        this.player.position.x,
+                        this.player.position.y,
+                        0
+                    ));
+                    
+                    // Keep only the recent history (last 20 points)
+                    if (this.jumpHistoryPoints.length > 20) {
+                        this.jumpHistoryPoints.shift();
+                    }
+                    
+                    // Remove existing path
+                    if (this.jumpPath) {
+                        this.scene.remove(this.jumpPath);
+                    }
+                    
+                    // Create curve from points
+                    const curve = new THREE.CatmullRomCurve3(this.jumpHistoryPoints);
+                    const points = curve.getPoints(50);
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    
+                    // Create path material with fade effect
+                    const pathMaterial = new THREE.LineBasicMaterial({
+                        color: 0x00FFFF,
+                        transparent: true,
+                        opacity: 0.6,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    // Create the path
+                    this.jumpPath = new THREE.Line(geometry, pathMaterial);
+                    this.scene.add(this.jumpPath);
                 }
                 
                 createLevel() {
@@ -543,19 +746,44 @@
                     this.collectibles = [];
                     this.portalObject = null;
                     
-                    // Create ground
-                    const groundGeometry = new THREE.BoxGeometry(100, 1, 1);
-                    const groundMaterial = new THREE.MeshBasicMaterial({ color: this.colors.platform });
+                    // Create ground - darker with bright outline like in the image
+                    const groundGeometry = new THREE.BoxGeometry(100, 0.5, 1);
+                    const groundMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x000066, // Dark blue/black ground
+                        transparent: true,
+                        opacity: 0.6
+                    });
                     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
                     this.ground.position.set(0, this.groundY, 0);
                     this.scene.add(this.ground);
                     this.platforms.push(this.ground);
                     
+                    // Add glow effect to ground
+                    const groundEdges = new THREE.EdgesGeometry(groundGeometry);
+                    const groundLineMaterial = new THREE.LineBasicMaterial({ 
+                        color: 0x00FFFF, 
+                        linewidth: 2
+                    });
+                    const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
+                    this.ground.add(groundWireframe);
+                    
+                    // Add subtle glow at ground level
+                    const groundGlowGeometry = new THREE.BoxGeometry(100, 0.05, 1.5);
+                    const groundGlowMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00CCFF,
+                        transparent: true,
+                        opacity: 0.15,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
+                    groundGlow.position.y = 0.3; // Slightly above the ground
+                    this.ground.add(groundGlow);
+                    
                     // Generate level from level manager
                     const levelData = this.levelManager.generateLevel(1, 2);
                     this.parseLevel(levelData);
                     
-                    logDebug("Level created");
+                    logDebug("Level created with Tron-like effects");
                 }
                 
                 parseLevel(levelData) {
@@ -590,7 +818,11 @@
                     switch (type) {
                         case 'B': // Block/Platform
                             const platformGeometry = new THREE.BoxGeometry(2, 1, 1);
-                            const platformMaterial = new THREE.MeshBasicMaterial({ color: this.colors.platform });
+                            const platformMaterial = new THREE.MeshBasicMaterial({ 
+                                color: 0x000033, // Dark blue/black platforms like in image
+                                transparent: true,
+                                opacity: 0.8
+                            });
                             const platform = new THREE.Mesh(platformGeometry, platformMaterial);
                             platform.position.set(x, y, 0);
                             platform.userData.type = 'platform';
@@ -598,11 +830,32 @@
                             platform.userData.height = 1;
                             this.scene.add(platform);
                             this.platforms.push(platform);
+                            
+                            // Add bright edges glow effect to platforms - cyan like in image
+                            const edges = new THREE.EdgesGeometry(platformGeometry);
+                            const lineMaterial = new THREE.LineBasicMaterial({ 
+                                color: 0x00FFFF, 
+                                linewidth: 2
+                            });
+                            const wireframe = new THREE.LineSegments(edges, lineMaterial);
+                            platform.add(wireframe);
+                            
                             break;
                             
                         case '^': // Spike
-                            const spikeGeometry = new THREE.ConeGeometry(0.5, 1, 4);
-                            const spikeMaterial = new THREE.MeshBasicMaterial({ color: this.colors.obstacle });
+                            // Use a custom triangle geometry for spike to match the image
+                            const spikeShape = new THREE.Shape();
+                            spikeShape.moveTo(0, 1); // Top point
+                            spikeShape.lineTo(-0.6, -0.2); // Bottom left
+                            spikeShape.lineTo(0.6, -0.2); // Bottom right
+                            spikeShape.lineTo(0, 1); // Back to top
+                            
+                            const spikeGeometry = new THREE.ShapeGeometry(spikeShape);
+                            const spikeMaterial = new THREE.MeshBasicMaterial({ 
+                                color: 0x40FFFF, // Cyan triangles like in the image
+                                transparent: true,
+                                opacity: 0.8
+                            });
                             const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
                             
                             // Ensure spike is above the ground, not inside it
@@ -612,15 +865,56 @@
                             
                             spike.position.set(x, y, 0);
                             spike.userData.type = 'obstacle';
-                            spike.userData.width = 1;
-                            spike.userData.height = 1;
+                            spike.userData.width = 1.2;
+                            spike.userData.height = 1.2;
                             this.scene.add(spike);
                             this.obstacles.push(spike);
+                            
+                            // Add glow edge effect to spikes using line segments
+                            const spikeEdgesGeometry = new THREE.BufferGeometry();
+                            const spikeVertices = new Float32Array([
+                                0, 1, 0,       // Top point
+                                -0.6, -0.2, 0, // Bottom left
+                                0.6, -0.2, 0,  // Bottom right
+                                0, 1, 0        // Back to top
+                            ]);
+                            spikeEdgesGeometry.setAttribute('position', new THREE.BufferAttribute(spikeVertices, 3));
+                            
+                            const spikeEdgesMaterial = new THREE.LineBasicMaterial({
+                                color: 0x00FFFF,
+                                linewidth: 2
+                            });
+                            const spikeEdges = new THREE.Line(spikeEdgesGeometry, spikeEdgesMaterial);
+                            spike.add(spikeEdges);
+                            
+                            // Add subtle glow effect to spikes
+                            const spikeGlowShape = new THREE.Shape();
+                            spikeGlowShape.moveTo(0, 1.2); // Top point
+                            spikeGlowShape.lineTo(-0.8, -0.3); // Bottom left
+                            spikeGlowShape.lineTo(0.8, -0.3); // Bottom right
+                            spikeGlowShape.lineTo(0, 1.2); // Back to top
+                            
+                            const spikeGlowGeometry = new THREE.ShapeGeometry(spikeGlowShape);
+                            const spikeGlowMaterial = new THREE.MeshBasicMaterial({
+                                color: 0x00FFFF,
+                                transparent: true, 
+                                opacity: 0.2,
+                                blending: THREE.AdditiveBlending
+                            });
+                            const spikeGlow = new THREE.Mesh(spikeGlowGeometry, spikeGlowMaterial);
+                            spikeGlow.position.z = -0.1; // Place slightly behind the spike
+                            spike.add(spikeGlow);
+                            
                             break;
                             
                         case 'C': // Coin
                             const coinGeometry = new THREE.CircleGeometry(0.5, 16);
-                            const coinMaterial = new THREE.MeshBasicMaterial({ color: 0xFFD700 });
+                            const coinMaterial = new THREE.MeshBasicMaterial({ 
+                                color: 0xFFFF00, // Yellow coins
+                                transparent: true,
+                                opacity: 0.9,
+                                side: THREE.DoubleSide
+                            });
                             const coin = new THREE.Mesh(coinGeometry, coinMaterial);
                             coin.position.set(x, y, 0);
                             coin.userData.type = 'coin';
@@ -629,11 +923,28 @@
                             coin.userData.collected = false;
                             this.scene.add(coin);
                             this.collectibles.push(coin);
+                            
+                            // Add glow effect to coins
+                            const coinGlowGeometry = new THREE.CircleGeometry(0.7, 16);
+                            const coinGlowMaterial = new THREE.MeshBasicMaterial({
+                                color: 0xFFFF00,
+                                transparent: true,
+                                opacity: 0.4,
+                                blending: THREE.AdditiveBlending,
+                                side: THREE.DoubleSide
+                            });
+                            const coinGlow = new THREE.Mesh(coinGlowGeometry, coinGlowMaterial);
+                            coin.add(coinGlow);
+                            
                             break;
                             
                         case 'J': // Jump pad
                             const jumpPadGeometry = new THREE.BoxGeometry(1.5, 0.5, 1);
-                            const jumpPadMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+                            const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
+                                color: 0xFFFF00,
+                                transparent: true,
+                                opacity: 0.8
+                            });
                             const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
                             jumpPad.position.set(x, y, 0);
                             jumpPad.userData.type = 'jumpPad';
@@ -641,21 +952,75 @@
                             jumpPad.userData.height = 0.5;
                             this.scene.add(jumpPad);
                             this.platforms.push(jumpPad);
+                            
+                            // Add edges glow effect to jump pads
+                            const jumpPadEdges = new THREE.EdgesGeometry(jumpPadGeometry);
+                            const jumpPadLineMaterial = new THREE.LineBasicMaterial({ 
+                                color: 0xFFFF00, 
+                                linewidth: 2
+                            });
+                            const jumpPadWireframe = new THREE.LineSegments(jumpPadEdges, jumpPadLineMaterial);
+                            jumpPad.add(jumpPadWireframe);
+                            
+                            // Add pulse glow effect
+                            const jumpPadGlowGeometry = new THREE.BoxGeometry(1.7, 0.7, 1.2);
+                            const jumpPadGlowMaterial = new THREE.MeshBasicMaterial({
+                                color: 0xFFFF00,
+                                transparent: true,
+                                opacity: 0.4,
+                                blending: THREE.AdditiveBlending
+                            });
+                            const jumpPadGlow = new THREE.Mesh(jumpPadGlowGeometry, jumpPadGlowMaterial);
+                            jumpPad.add(jumpPadGlow);
+                            
+                            // Store the glow mesh for animation
+                            jumpPad.userData.glowMesh = jumpPadGlow;
                             break;
                             
                         case 'P': // Portal
-                            const portalGeometry = new THREE.RingGeometry(0.7, 1, 16);
+                            const portalGeometry = new THREE.RingGeometry(0.7, 1, 32);
                             const portalMaterial = new THREE.MeshBasicMaterial({ 
-                                color: 0xFF00FF,
-                                side: THREE.DoubleSide
+                                color: 0x40FF40, // Make portals green to match the image
+                                side: THREE.DoubleSide,
+                                transparent: true,
+                                opacity: 0.9
                             });
                             const portal = new THREE.Mesh(portalGeometry, portalMaterial);
-                            portal.position.set(x, y, 0);
+                            
+                            // Place portal at the ground level as seen in the image
+                            const portalY = this.groundY + 0.75;
+                            portal.position.set(x, portalY, 0);
+                            
                             portal.userData.type = 'portal';
                             portal.userData.width = 2;
-                            portal.userData.height = 2;
+                            portal.userData.height = 1.5; // Reduced height
                             this.scene.add(portal);
                             this.portalObject = portal;
+                            
+                            // Add glow effect to portal
+                            const portalGlowGeometry = new THREE.RingGeometry(0.5, 1.3, 32);
+                            const portalGlowMaterial = new THREE.MeshBasicMaterial({
+                                color: 0x40FF40, // Green glow
+                                transparent: true,
+                                opacity: 0.5,
+                                blending: THREE.AdditiveBlending,
+                                side: THREE.DoubleSide
+                            });
+                            const portalGlow = new THREE.Mesh(portalGlowGeometry, portalGlowMaterial);
+                            portal.add(portalGlow);
+                            
+                            // Add number display on portal for level indication
+                            const textGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.2);
+                            const textMaterial = new THREE.MeshBasicMaterial({
+                                color: 0x00FF00,
+                                transparent: false
+                            });
+                            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                            textMesh.position.z = 0.1;
+                            portal.add(textMesh);
+                            
+                            // Store the glow mesh for animation
+                            portal.userData.glowMesh = portalGlow;
                             break;
                             
                         case 'S': // Start position
@@ -674,6 +1039,9 @@
                         this.isJumping = true;
                         this.onGround = false;
                         this.onPlatform = false;
+                        
+                        // Create jump particles and start path tracking
+                        this.createJumpParticles();
                     }
                     
                     // Increase speed when right arrow is pressed
@@ -724,6 +1092,15 @@
                     this.playerVelocity.y = 0;
                     this.isJumping = false;
                     
+                    // Reset trail particles
+                    if (this.trailParticles) {
+                        for (let i = 0; i < this.trailParticles.length; i++) {
+                            const particle = this.trailParticles[i];
+                            particle.position.x = this.player.position.x - 0.5 - (i * 0.2);
+                            particle.position.y = this.player.position.y;
+                        }
+                    }
+                    
                     // Recreate level
                     this.createLevel();
                     
@@ -768,12 +1145,79 @@
                     this.player.position.x += this.playerVelocity.x * deltaTime;
                     this.player.position.y += this.playerVelocity.y * deltaTime;
                     
+                    // Update jump particles
+                    if (this.jumpParticles.length > 0) {
+                        for (let i = this.jumpParticles.length - 1; i >= 0; i--) {
+                            const particle = this.jumpParticles[i];
+                            
+                            // Update position based on velocity
+                            particle.position.x += particle.userData.velocityX * deltaTime;
+                            particle.position.y += particle.userData.velocityY * deltaTime;
+                            
+                            // Apply gravity to particles
+                            particle.userData.velocityY -= 15 * deltaTime;
+                            
+                            // Reduce life
+                            particle.userData.life -= deltaTime * 1.5;
+                            
+                            // Update opacity based on life
+                            particle.material.opacity = particle.userData.life * 0.7;
+                            
+                            // Remove if life is depleted
+                            if (particle.userData.life <= 0) {
+                                this.scene.remove(particle);
+                                this.jumpParticles.splice(i, 1);
+                            }
+                        }
+                    }
+                    
+                    // Update jump path if jumping
+                    if (this.isJumping && this.jumpHistoryPoints.length > 0) {
+                        this.updateJumpPath();
+                    }
+                    
+                    // Fade out jump path when landing
+                    if (!this.isJumping && this.jumpPath) {
+                        this.jumpPath.material.opacity -= deltaTime * 2;
+                        if (this.jumpPath.material.opacity <= 0) {
+                            this.scene.remove(this.jumpPath);
+                            this.jumpPath = null;
+                        }
+                    }
+                    
+                    // Update trail particles
+                    if (this.trailParticles) {
+                        for (let i = 0; i < this.trailParticles.length; i++) {
+                            const particle = this.trailParticles[i];
+                            const delay = 0.05 * (i + 1);
+                            const targetX = this.player.position.x - 0.5 - (i * 0.2);
+                            const targetY = this.player.position.y;
+                            
+                            // Smooth follow with increasing delay for each particle
+                            particle.position.x += (targetX - particle.position.x) * (10 * deltaTime);
+                            particle.position.y += (targetY - particle.position.y) * (10 * deltaTime);
+                            
+                            // Make particles pulse with different phases
+                            particle.scale.x = 1 + Math.sin(performance.now() * 0.005 + i * 0.5) * 0.1;
+                            particle.scale.y = 1 + Math.sin(performance.now() * 0.005 + i * 0.5) * 0.1;
+                        }
+                    }
+                    
                     // Ground collision
                     if (this.player.position.y - this.playerSize/2 < this.groundY + 0.5) { // Add a small offset to ensure player is on top
                         this.player.position.y = this.groundY + this.playerSize/2 + 0.5;
                         this.playerVelocity.y = 0;
                         this.isJumping = false;
                         this.onGround = true;
+                        
+                        // Gradually fade out jump path after landing
+                        if (this.jumpPath) {
+                            this.jumpPath.material.opacity -= deltaTime * 3;
+                            if (this.jumpPath.material.opacity <= 0) {
+                                this.scene.remove(this.jumpPath);
+                                this.jumpPath = null;
+                            }
+                        }
                     } else {
                         this.onGround = false;
                     }
@@ -788,11 +1232,38 @@
                     this.score += deltaTime * 10;
                     this.updateScoreDisplay();
                     
-                    // Rotate player when jumping
-                    if (this.isJumping) {
-                        this.player.rotation.z -= 3 * deltaTime;
-                    } else {
-                        this.player.rotation.z = 0;
+                    // Animate player glow effect
+                    if (this.playerGlow) {
+                        this.playerGlow.scale.x = 1 + Math.sin(performance.now() * 0.005) * 0.1;
+                        this.playerGlow.scale.y = 1 + Math.sin(performance.now() * 0.005) * 0.1;
+                        this.playerGlow.scale.z = 1 + Math.sin(performance.now() * 0.005) * 0.1;
+                    }
+                    
+                    // Additional player animation during motion - square player should not rotate
+                    if (this.playerMainMesh) {
+                        this.playerMainMesh.rotation.z = 0;
+                    }
+                    
+                    // Keep player upright even while jumping (no rotation), matching the image
+                    this.player.rotation.z = 0;
+                    
+                    // Animate other elements with glow effect
+                    // Animate jump pads
+                    this.platforms.forEach(platform => {
+                        if (platform.userData.type === 'jumpPad' && platform.userData.glowMesh) {
+                            const glow = platform.userData.glowMesh;
+                            glow.scale.x = 1 + Math.sin(performance.now() * 0.01) * 0.2;
+                            glow.scale.y = 1 + Math.sin(performance.now() * 0.01) * 0.2;
+                            glow.material.opacity = 0.3 + Math.sin(performance.now() * 0.01) * 0.2;
+                        }
+                    });
+                    
+                    // Animate portal if it exists
+                    if (this.portalObject && this.portalObject.userData.glowMesh) {
+                        const portalGlow = this.portalObject.userData.glowMesh;
+                        portalGlow.rotation.z += deltaTime * 2;
+                        portalGlow.scale.x = 1 + Math.sin(performance.now() * 0.003) * 0.15;
+                        portalGlow.scale.y = 1 + Math.sin(performance.now() * 0.003) * 0.15;
                     }
                 }
                 

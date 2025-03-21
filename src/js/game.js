@@ -16,43 +16,43 @@ export class Game {
         this.currentLevel = 1;
         this.colorSchemes = {
             purple: {
-                background: 0x220033,
-                platforms: 0x6600ff,
-                player: 0xff00ff,
-                spikes: 0x9900ff,
-                accent: 0xff00cc
+                background: 0x220044,
+                platforms: 0x6633ff,
+                player: 0x66ffff,
+                spikes: 0xffdd00,
+                accent: 0x00ffcc
+            },
+            magenta: {
+                background: 0x800040,
+                platforms: 0xff0066,
+                player: 0x99ff00,
+                spikes: 0xffdd00,
+                accent: 0xffcc00
             },
             blue: {
                 background: 0x000066,
-                platforms: 0x0000ff,
+                platforms: 0x3399ff,
                 player: 0x00ffff,
-                spikes: 0x0044ff,
+                spikes: 0xffdd00,
                 accent: 0x00ff88
             },
             green: {
-                background: 0x002211,
-                platforms: 0x00dd44,
+                background: 0x003322,
+                platforms: 0x00ff66,
                 player: 0x66ff66,
-                spikes: 0x00bb33,
+                spikes: 0xffdd00,
                 accent: 0xccff00
             },
-            red: {
-                background: 0x330011,
-                platforms: 0xdd0033,
-                player: 0xff4444,
-                spikes: 0xff0055, 
-                accent: 0xffcc00
-            },
-            cyan: {
-                background: 0x003333,
-                platforms: 0x00aaaa,
-                player: 0x33ffff,
-                spikes: 0x00cccc,
-                accent: 0x00ffaa
+            amber: {
+                background: 0x331100,
+                platforms: 0xff6600,
+                player: 0xffbb22,
+                spikes: 0xffdd00, 
+                accent: 0xffdd00
             }
         };
         this.availableColorSchemes = Object.keys(this.colorSchemes);
-        this.currentColorScheme = 'blue';
+        this.currentColorScheme = 'purple';
         
         // Create level manager
         this.levelManager = new LevelManager();
@@ -91,7 +91,9 @@ export class Game {
             
             // Create the scene
             this.scene = new THREE.Scene();
-            this.scene.background = new THREE.Color(this.colorSchemes[this.currentColorScheme].background);
+            
+            // Create scene background with gradient effect
+            this.createGradientBackground(this.colorSchemes[this.currentColorScheme].background);
             
             // Create an orthographic camera for 2D view
             const aspectRatio = window.innerWidth / window.innerHeight;
@@ -173,7 +175,7 @@ export class Game {
         this.player.update(deltaTime);
         
         // Check for level completion
-        if (this.level.isLevelCompleted && this.level.portalExists) {
+        if (this.level.portalExists) {
             if (this.collisionDetector.checkPortalCollision()) {
                 this.nextLevel();
                 return;
@@ -323,16 +325,43 @@ export class Game {
 
     // Load a tile-based level design for the game
     loadTileBasedLevel() {
-        // Get the difficulty based on the current level
-        const difficulty = Math.min(Math.floor(this.currentLevel * 0.5) + 1, 5);
+        // Get a level from the level manager
+        const difficulty = Math.min(this.currentLevel, 5); // Cap difficulty at 5
+        const levelData = this.levelManager.generateLevel(this.currentLevel, difficulty);
         
-        // Generate a level from our level manager
-        const levelString = this.levelManager.generateLevel(this.currentLevel, difficulty);
+        // Set theme based on the level data
+        if (levelData.theme) {
+            this.colorSchemes.custom = {
+                background: new THREE.Color(levelData.theme.background),
+                platforms: new THREE.Color(levelData.theme.platforms),
+                player: new THREE.Color(levelData.theme.player),
+                accent: new THREE.Color(levelData.theme.accent)
+            };
+            this.currentColorScheme = 'custom';
+            
+            // Update background with gradient using theme color
+            // First remove existing background
+            const existingBackground = this.scene.getObjectByName("background");
+            if (existingBackground) {
+                this.scene.remove(existingBackground);
+                existingBackground.geometry.dispose();
+                existingBackground.material.dispose();
+            }
+            
+            // Create new gradient background using hex color
+            const hexColor = levelData.theme.background;
+            const color = new THREE.Color(hexColor);
+            this.createGradientBackground(color.getHex());
+            
+            // Update player colors
+            this.player.updateColors(this.colorSchemes.custom);
+            
+            // Update UI colors to match new color scheme
+            this.updateUIColors();
+        }
         
-        // Create the level from the generated ASCII
-        this.level.createFromASCII(levelString);
-        
-        console.log(`Loaded tile-based level ${this.currentLevel} with difficulty ${difficulty}`);
+        // Create level from ASCII map
+        this.level.createFromASCII(levelData.level);
     }
 
     onWindowResize() {
@@ -366,8 +395,17 @@ export class Game {
             this.currentColorScheme = this.availableColorSchemes[randomIndex];
         } while (this.currentColorScheme === previousColorScheme);
         
-        // Update scene background color
-        this.scene.background = new THREE.Color(this.colorSchemes[this.currentColorScheme].background);
+        // Update background with new color scheme using gradient
+        // First remove existing background
+        const existingBackground = this.scene.getObjectByName("background");
+        if (existingBackground) {
+            this.scene.remove(existingBackground);
+            existingBackground.geometry.dispose();
+            existingBackground.material.dispose();
+        }
+        
+        // Create new gradient background
+        this.createGradientBackground(this.colorSchemes[this.currentColorScheme].background);
         
         // Clear existing level
         this.level.clear();
@@ -707,5 +745,69 @@ NOTE:
             gameOverUI.style.borderColor = accentColor;
             gameOverUI.style.boxShadow = `0 0 20px ${accentColor}, inset 0 0 10px ${accentColor}`;
         }
+    }
+
+    /**
+     * Create a gradient background for the scene
+     * @param {number} baseColor - The base color for the gradient
+     */
+    createGradientBackground(baseColor) {
+        // Create a gradient background with the base color
+        // Convert the numeric color to a three.js color
+        const color = new THREE.Color(baseColor);
+        
+        // Get the RGB components
+        const r = color.r;
+        const g = color.g;
+        const b = color.b;
+        
+        // Create a slightly lighter version for the top
+        const colorTop = new THREE.Color(
+            Math.min(r * 1.2, 1),
+            Math.min(g * 1.2, 1),
+            Math.min(b * 1.2, 1)
+        );
+        
+        // Create a darker version for the bottom
+        const colorBottom = new THREE.Color(
+            r * 0.5,
+            g * 0.5,
+            b * 0.5
+        );
+        
+        // Create a large plane for the background
+        const geometry = new THREE.PlaneGeometry(2000, 2000);
+        
+        // Create a shader material with vertical gradient
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                colorTop: { value: colorTop },
+                colorBottom: { value: colorBottom }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 colorTop;
+                uniform vec3 colorBottom;
+                varying vec2 vUv;
+                
+                void main() {
+                    gl_FragColor = vec4(mix(colorBottom, colorTop, vUv.y), 1.0);
+                }
+            `,
+            side: THREE.BackSide
+        });
+        
+        // Create and add the background mesh
+        const backgroundMesh = new THREE.Mesh(geometry, material);
+        backgroundMesh.position.z = -10; // Behind everything
+        backgroundMesh.name = "background";
+        this.scene.add(backgroundMesh);
     }
 } 

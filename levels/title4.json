@@ -1,16 +1,22 @@
 {
-  "title": "Spike Gauntlet",
-  "description": "Navigate through a dangerous spike field",
+  "title": "Cyber Waters",
+  "description": "Cyan-themed jumping challenges",
   "width": 20,
   "height": 8,
+  "theme": {
+    "background": "#00445E",
+    "platforms": "#00CCFF",
+    "player": "#FF9900",
+    "accent": "#FFFFFF"
+  },
   "layout": [
     ".....................",
-    "..........C..........",
-    "BBBB..........BBB....",
-    "....B........B.......",
-    "....B..^..^..B..C....",
-    "....BBBBBBBBB........",
-    "............J........",
-    "^.^.^.^.^.^.^B.^.^.^."
+    "........C............",
+    "......BBBB...........",
+    ".....................",
+    "....J................",
+    "...BBB..........BBB..",
+    "...............B.....",
+    "^.^.^.^.^.^.^.^.^.^.^."
   ]
 } 

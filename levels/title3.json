@@ -1,16 +1,22 @@
 {
-  "title": "Dangerous Path",
-  "description": "Navigate through spinning blades to find the key",
+  "title": "Amber Circuit",
+  "description": "A warm-colored level with orange tones",
   "width": 20,
   "height": 8,
+  "theme": {
+    "background": "#331100",
+    "platforms": "#FF6600",
+    "player": "#FFBB22",
+    "accent": "#FFDD00"
+  },
   "layout": [
     ".....................",
-    "............K........",
-    "...........BBBB......",
     ".....................",
-    ".....O...O...........",
-    "..BBB....BBB.........",
+    "........C............",
+    "......BBBB...........",
+    "..BBB................",
     ".....................",
-    "^.^.^.^............^."
+    "B.........BBB........",
+    "...^...^.....^...^..."
   ]
-} 
+}

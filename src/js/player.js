@@ -25,6 +25,7 @@ export class Player {
 
     create() {
         // Create player mesh - a neon outlined square with Tron-like glow
+        // Main outer shape - rotated square
         const outerGeometry = new THREE.PlaneGeometry(this.size, this.size);
         const outerMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.player,
@@ -33,52 +34,54 @@ export class Player {
         });
         this.outerMesh = new THREE.Mesh(outerGeometry, outerMaterial);
         
-        // Create inner square (slightly smaller)
+        // Create inner square (slightly smaller, black)
         const innerGeometry = new THREE.PlaneGeometry(this.size * 0.7, this.size * 0.7);
         const innerMaterial = new THREE.MeshBasicMaterial({
             color: 0x000000,
-            transparent: true,
-            opacity: 0.7
+            transparent: false,
+            opacity: 1
         });
         this.innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
+        this.innerMesh.position.z = 0.01;
         
-        // Create innermost square (for accent)
-        const accentGeometry = new THREE.PlaneGeometry(this.size * 0.4, this.size * 0.4);
+        // Create center accent - horizontal bar like in the image
+        const accentGeometry = new THREE.PlaneGeometry(this.size * 0.4, this.size * 0.15);
         const accentMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.accent,
-            transparent: true,
+            transparent: false,
             opacity: 1
         });
         this.accentMesh = new THREE.Mesh(accentGeometry, accentMaterial);
+        this.accentMesh.position.z = 0.02;
         
-        // Create edge outline for Tron effect
+        // Create bright edge outline
         const edgesGeometry = new THREE.EdgesGeometry(outerGeometry);
         const edgesMaterial = new THREE.LineBasicMaterial({
-            color: 0xffffff, // Bright white for Tron effect
-            linewidth: 2, // Reduced from 3
+            color: 0xFFFFFF, // White edges for brighter glow effect
+            linewidth: 2,
             transparent: true,
             opacity: 0.9
         });
         this.edgesMesh = new THREE.LineSegments(edgesGeometry, edgesMaterial);
-        this.edgesMesh.position.z = 0.01;
+        this.edgesMesh.position.z = 0.03;
         
-        // Create primary glow effect (reduced from 1.3)
-        const glowGeometry = new THREE.PlaneGeometry(this.size * 1.2, this.size * 1.2);
+        // Create primary glow effect
+        const glowGeometry = new THREE.PlaneGeometry(this.size * 1.3, this.size * 1.3);
         const glowMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.player,
             transparent: true,
-            opacity: 0.3, // Reduced from 0.4
+            opacity: 0.4,
             side: THREE.DoubleSide
         });
         this.glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
         this.glowMesh.position.z = -0.01;
         
-        // Create outer glow for more intense effect (reduced from 1.6)
-        const outerGlowGeometry = new THREE.PlaneGeometry(this.size * 1.35, this.size * 1.35);
+        // Create outer glow for more intense effect
+        const outerGlowGeometry = new THREE.PlaneGeometry(this.size * 1.6, this.size * 1.6);
         const outerGlowMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.player,
             transparent: true,
-            opacity: 0.15, // Reduced from 0.2
+            opacity: 0.2,
             side: THREE.DoubleSide
         });
         this.outerGlowMesh = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
@@ -92,6 +95,9 @@ export class Player {
         this.mesh.add(this.innerMesh);
         this.mesh.add(this.accentMesh);
         this.mesh.add(this.edgesMesh);
+        
+        // Rotate the player 45 degrees to match the diamond shape in the image
+        this.mesh.rotation.z = Math.PI / 4;
         
         // Set initial position
         this.mesh.position.set(this.startX, this.startY, 0);
@@ -168,7 +174,6 @@ export class Player {
             this.position.y = newGroundY;
             this.velocity.y = 0;
             this.isJumping = false;
-            this.mesh.rotation.z = 0;
             this.onGround = true;
         } else {
             this.onGround = false;
@@ -177,17 +182,15 @@ export class Player {
         // Handle platform state
         if (this.onPlatform) {
             this.isJumping = false;
-            this.mesh.rotation.z = 0;
             
-            // Stop any rotation immediately when landing on platform
-            if (Math.abs(this.mesh.rotation.z) > 0.001) {
-                this.mesh.rotation.z = 0;
-            }
+            // Keep the mesh rotated at 45 degrees when on platform
+            const targetRotation = Math.PI / 4;
+            this.mesh.rotation.z = targetRotation;
         }
         
         // Update rotation if in the air (not on ground or platform)
         if (!this.onGround && !this.onPlatform) {
-            this.mesh.rotation.z -= 3 * deltaTime;
+            this.mesh.rotation.z += 3 * deltaTime;
             this.isJumping = true;
         }
     }
@@ -205,55 +208,85 @@ export class Player {
     }
 
     createJumpParticles() {
-        // Create a simple particle effect when jumping
-        const particleCount = 10;
+        // Create a fireworks-like particle effect when jumping
+        const particleCount = 30; // Increased from 10
         const particles = new THREE.Group();
         
+        // Colors for particles: white, player color, and accent color
+        const particleColors = [
+            0xFFFFFF, // White
+            this.colors.player, // Player color
+            this.colors.accent, // Accent color
+        ];
+        
         for (let i = 0; i < particleCount; i++) {
-            const size = Math.random() * 0.2 + 0.1;
+            // Random size with more variation
+            const size = Math.random() * 0.4 + 0.05; // More size variation
             const geometry = new THREE.PlaneGeometry(size, size);
+            
+            // Randomly select a color from the available colors
+            const colorIndex = Math.floor(Math.random() * particleColors.length);
+            const particleColor = particleColors[colorIndex];
+            
             const material = new THREE.MeshBasicMaterial({
-                color: this.colors.accent,
+                color: particleColor,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.9
             });
             
             const particle = new THREE.Mesh(geometry, material);
             
             // Position around player bottom
-            particle.position.x = this.mesh.position.x + (Math.random() * 1 - 0.5);
+            particle.position.x = this.mesh.position.x + (Math.random() * 1.2 - 0.6);
             particle.position.y = this.mesh.position.y - this.size/2;
             particle.position.z = 0.1;
             
-            // Random velocity
+            // More varied velocity for fireworks effect
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 6 + 2;
+            
             particle.userData.velocity = {
-                x: Math.random() * 2 - 1,
-                y: Math.random() * 3 + 1
+                x: Math.cos(angle) * speed * 0.2,
+                y: Math.sin(angle) * speed * 0.4 + 1.5
             };
             
-            // Life span
-            particle.userData.life = 1.0;
-            particle.userData.decay = Math.random() * 0.2 + 0.3;
+            // Life span with more variation
+            particle.userData.life = 1.0 + Math.random() * 0.5;
+            particle.userData.decay = Math.random() * 0.15 + 0.25;
+            
+            // Add rotation to particles
+            particle.userData.rotationSpeed = (Math.random() - 0.5) * 0.2;
             
             particles.add(particle);
         }
         
         this.scene.add(particles);
         
-        // Animate particles
+        // Animate particles with improved animation
         const animateParticles = () => {
             let allDead = true;
             
             particles.children.forEach(particle => {
                 // Move particle
-                particle.position.x += particle.userData.velocity.x * 0.1;
-                particle.position.y += particle.userData.velocity.y * 0.1;
+                particle.position.x += particle.userData.velocity.x;
+                particle.position.y += particle.userData.velocity.y;
+                
+                // Apply gravity after initial burst
+                particle.userData.velocity.y -= 0.15;
+                
+                // Add rotation to particles
+                particle.rotation.z += particle.userData.rotationSpeed;
+                
+                // Gradually slow down horizontal movement
+                particle.userData.velocity.x *= 0.98;
                 
                 // Decay life
                 particle.userData.life -= particle.userData.decay * 0.1;
                 
-                // Update opacity
-                particle.material.opacity = particle.userData.life;
+                // Update opacity and scale for fade-out effect
+                const lifeRatio = particle.userData.life;
+                particle.material.opacity = lifeRatio;
+                particle.scale.set(lifeRatio, lifeRatio, 1);
                 
                 if (particle.userData.life > 0) {
                     allDead = false;
@@ -345,14 +378,28 @@ export class Player {
     updateColors(newColorScheme) {
         // Update player colors when changing levels
         
-        // Update outer mesh (main player color)
+        // Update outer mesh
         if (this.outerMesh) {
             this.outerMesh.material.color.set(newColorScheme.player);
+        }
+        
+        // Update edges
+        if (this.edgesMesh) {
+            this.edgesMesh.material.color.set(newColorScheme.player);
         }
         
         // Update accent mesh (inner color)
         if (this.accentMesh) {
             this.accentMesh.material.color.set(newColorScheme.accent);
+        }
+        
+        // Update glow effects
+        if (this.glowMesh) {
+            this.glowMesh.material.color.set(newColorScheme.player);
+        }
+        
+        if (this.outerGlowMesh) {
+            this.outerGlowMesh.material.color.set(newColorScheme.player);
         }
         
         // Store new colors for future reference

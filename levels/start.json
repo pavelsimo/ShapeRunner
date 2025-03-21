@@ -3,6 +3,12 @@
   "description": "The player starts here on every level",
   "width": 10,
   "height": 8,
+  "theme": {
+    "background": "#000000",
+    "platforms": "#00BFFF",
+    "player": "#FF4500",
+    "accent": "#20E080"
+  },
   "layout": [
     "...........",
     "...........",

@@ -1,16 +1,22 @@
 {
-  "title": "Finish Line",
-  "description": "The end of every level with the exit portal",
+  "title": "End Gate",
+  "description": "The endpoint for each level",
   "width": 10,
   "height": 8,
+  "theme": {
+    "background": "#003344",
+    "platforms": "#00BBCC",
+    "player": "#FFAA00",
+    "accent": "#FFFF66"
+  },
   "layout": [
     "...........",
     "...........",
-    "......E....",
-    ".....BBB...",
     "...........",
     "...........",
-    "BBBBBBBBBB.",
+    "........P..",
+    "........BBB",
+    "...........",
     "..........."
   ]
-} 
+}

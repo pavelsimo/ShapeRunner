@@ -1,16 +1,22 @@
 {
   "title": "Simple Platforms",
-  "description": "Basic platform layout with some spikes",
+  "description": "A simple level with platforms",
   "width": 20,
   "height": 8,
+  "theme": {
+    "background": "#220066",
+    "platforms": "#6633FF",
+    "player": "#66FFFF",
+    "accent": "#00FFCC"
+  },
   "layout": [
     ".....................",
     ".....................",
-    "........C............",
-    "......BBBB...........",
-    "..BBB................",
     ".....................",
-    "B.........BBB........",
-    "...^...^.....^...^..."
+    "......C..............",
+    "....BBBB.............",
+    ".....................",
+    "...B..................",
+    ".BBB.................."
   ]
 } 
