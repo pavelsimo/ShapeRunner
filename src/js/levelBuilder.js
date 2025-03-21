@@ -186,31 +186,6 @@ export class LevelBuilder {
         edges.position.z = 0.01;
         platformGroup.add(edges);
         
-        // Create strong outer glow for platforms
-        const glowSize = 0.4;
-        const glowGeometry = new THREE.PlaneGeometry(width + glowSize, height + glowSize);
-        const glowMaterial = new THREE.MeshBasicMaterial({
-            color: this.colors.platforms,
-            transparent: true,
-            opacity: 0.6,
-            side: THREE.DoubleSide
-        });
-        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-        glow.position.z = -0.01;
-        platformGroup.add(glow);
-        
-        // Create second, larger glow for more intense effect
-        const outerGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 2, height + glowSize * 2);
-        const outerGlowMaterial = new THREE.MeshBasicMaterial({
-            color: this.colors.platforms,
-            transparent: true,
-            opacity: 0.3,
-            side: THREE.DoubleSide
-        });
-        const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
-        outerGlow.position.z = -0.02;
-        platformGroup.add(outerGlow);
-        
         // Add grid lines for Tron effect
         if (width > 2 && height > 1) {
             const gridLines = new THREE.Group();
@@ -218,14 +193,14 @@ export class LevelBuilder {
                 color: this.colors.platforms,
                 linewidth: 1,
                 transparent: true,
-                opacity: 0.4
+                opacity: 0.5 // Increased opacity for grid lines
             });
             
-            // Horizontal grid lines
-            const hSegments = Math.floor(width / 1.5);
+            // Horizontal grid lines - increased density
+            const hSegments = Math.floor(width / 0.8); // Reduced from 1.5 to 0.8 for more lines
             for (let i = 1; i < hSegments; i++) {
                 const lineGeometry = new THREE.BufferGeometry();
-                const lineSpacing = (width * 0.9) / hSegments;
+                const lineSpacing = (width * 0.94) / hSegments;
                 const x1 = -width/2 + lineSpacing * i;
                 
                 const points = [
@@ -238,12 +213,12 @@ export class LevelBuilder {
                 gridLines.add(line);
             }
             
-            // Vertical grid lines for larger platforms
+            // Vertical grid lines for larger platforms - increased density
             if (height > 1.5) {
-                const vSegments = Math.floor(height / 0.8);
+                const vSegments = Math.floor(height / 0.4); // Reduced from 0.8 to 0.4 for more lines
                 for (let i = 1; i < vSegments; i++) {
                     const lineGeometry = new THREE.BufferGeometry();
-                    const lineSpacing = (height * 0.9) / vSegments;
+                    const lineSpacing = (height * 0.94) / vSegments;
                     const y1 = -height/2 + lineSpacing * i;
                     
                     const points = [
@@ -257,8 +232,71 @@ export class LevelBuilder {
                 }
             }
             
+            // Add diagonal grid lines for more Tron-like effect
+            if (width > 3 && height > 1.5) {
+                const diagonalCount = Math.floor((width + height) / 3);
+                
+                // Top-left to bottom-right diagonals
+                for (let i = 0; i < diagonalCount; i++) {
+                    const lineGeometry = new THREE.BufferGeometry();
+                    const startX = -width/2 + (i * width / diagonalCount);
+                    const startY = height/2;
+                    const endX = startX + height;
+                    const endY = -height/2;
+                    
+                    // Only draw the line if it intersects the platform
+                    if (startX < width/2 && endX > -width/2) {
+                        const points = [
+                            new THREE.Vector3(Math.max(startX, -width/2), Math.min(startY, height/2), 0.03),
+                            new THREE.Vector3(Math.min(endX, width/2), Math.max(endY, -height/2), 0.03)
+                        ];
+                        
+                        lineGeometry.setFromPoints(points);
+                        const line = new THREE.Line(lineGeometry, gridMaterial);
+                        gridLines.add(line);
+                    }
+                }
+            }
+            
             platformGroup.add(gridLines);
         }
+        
+        // Create stronger outer glow for platforms - first layer
+        const glowSize = 0.8; // Increased glow size further (was 0.6)
+        const glowGeometry = new THREE.PlaneGeometry(width + glowSize, height + glowSize);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: this.colors.platforms,
+            transparent: true,
+            opacity: 0.9, // Increased opacity for more visibility (was 0.8)
+            side: THREE.DoubleSide
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.z = -0.01;
+        platformGroup.add(glow);
+        
+        // Create second, larger glow for more intense effect
+        const outerGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 4, height + glowSize * 4); // Increased from 3.5 to 4
+        const outerGlowMaterial = new THREE.MeshBasicMaterial({
+            color: this.colors.platforms,
+            transparent: true,
+            opacity: 0.6, // Increased opacity (was 0.5)
+            side: THREE.DoubleSide
+        });
+        const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
+        outerGlow.position.z = -0.02;
+        platformGroup.add(outerGlow);
+        
+        // Add a third, very subtle outer glow for extended effect
+        const farGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 7, height + glowSize * 7); // Increased from 6 to 7
+        const farGlowMaterial = new THREE.MeshBasicMaterial({
+            color: this.colors.platforms,
+            transparent: true,
+            opacity: 0.3, // Increased opacity (was 0.25)
+            side: THREE.DoubleSide
+        });
+        const farGlow = new THREE.Mesh(farGlowGeometry, farGlowMaterial);
+        farGlow.position.z = -0.03;
+        platformGroup.add(farGlow);
         
         // If it's a jump pad, add a special indicator
         if (isJumpPad) {
@@ -333,8 +371,9 @@ export class LevelBuilder {
             
             // Update glow opacity and scale based on intensity
             const intensity = platformGroup.userData.pulseIntensity;
-            glow.material.opacity = 0.6 * intensity;
-            outerGlow.material.opacity = 0.3 * intensity;
+            glow.material.opacity = 0.9 * intensity;
+            outerGlow.material.opacity = 0.6 * intensity;
+            farGlow.material.opacity = 0.3 * intensity;
             
             // Continue animation if platform is in the scene
             if (platformGroup.parent) {

@@ -27,6 +27,25 @@
             z-index: 10;
         }
         
+        #score-display {
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border: 2px solid #00FFFF;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
+            text-shadow: 0 0 5px #00FFFF;
+            margin-bottom: 15px;
+            display: inline-block;
+            transition: all 0.2s ease;
+            letter-spacing: 1px;
+        }
+        
+        #score-display:hover {
+            box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
+        }
+        
         #pause-btn {
             display: flex;
             justify-content: center;
@@ -39,6 +58,7 @@
             cursor: pointer;
             box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
             transition: all 0.2s ease;
+            margin: 15px;
         }
         
         #pause-btn:hover {
@@ -695,19 +715,70 @@
                     
                     // Create curve from points
                     const curve = new THREE.CatmullRomCurve3(this.jumpHistoryPoints);
-                    const points = curve.getPoints(50);
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    
+                    // Instead of a basic line, create a variable-width tube
+                    // First, create points along the curve
+                    const numPoints = 50;
+                    const points = curve.getPoints(numPoints);
+                    
+                    // Create a custom geometry for the variable-width path
+                    const pathGeometry = new THREE.BufferGeometry();
+                    const positions = [];
+                    const indices = [];
+                    
+                    // Create a ribbon-like geometry with varying width
+                    for (let i = 0; i < points.length; i++) {
+                        const point = points[i];
+                        
+                        // Calculate width factor - thicker near the player (end of the curve)
+                        // and thinner away from the player (start of the curve)
+                        const widthFactor = i / points.length; // 0 at start, 1 at end (near player)
+                        const width = 0.05 + widthFactor * 0.2; // Thin to thick
+                        
+                        // For each point, create two vertices perpendicular to the curve
+                        let tangent;
+                        if (i < points.length - 1) {
+                            // Calculate tangent based on current and next point
+                            tangent = new THREE.Vector3().subVectors(points[i + 1], point).normalize();
+                        } else {
+                            // For the last point, use the previous tangent
+                            tangent = new THREE.Vector3().subVectors(point, points[i - 1]).normalize();
+                        }
+                        
+                        // Create perpendicular vector (for 2D curve in XY plane)
+                        const normal = new THREE.Vector3(-tangent.y, tangent.x, 0).normalize();
+                        
+                        // Create vertices on both sides of the curve
+                        const v1 = new THREE.Vector3().addVectors(point, normal.clone().multiplyScalar(width));
+                        const v2 = new THREE.Vector3().subVectors(point, normal.clone().multiplyScalar(width));
+                        
+                        // Add positions
+                        positions.push(v1.x, v1.y, v1.z);
+                        positions.push(v2.x, v2.y, v2.z);
+                        
+                        // Add indices to create triangles (except for the first point)
+                        if (i > 0) {
+                            const base = (i - 1) * 2;
+                            indices.push(base, base + 1, base + 2); // First triangle
+                            indices.push(base + 1, base + 3, base + 2); // Second triangle
+                        }
+                    }
+                    
+                    // Set attributes for the geometry
+                    pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                    pathGeometry.setIndex(indices);
                     
                     // Create path material with fade effect
-                    const pathMaterial = new THREE.LineBasicMaterial({
+                    const pathMaterial = new THREE.MeshBasicMaterial({
                         color: 0x00FFFF,
                         transparent: true,
                         opacity: 0.6,
-                        blending: THREE.AdditiveBlending
+                        blending: THREE.AdditiveBlending,
+                        side: THREE.DoubleSide
                     });
                     
-                    // Create the path
-                    this.jumpPath = new THREE.Line(geometry, pathMaterial);
+                    // Create the path as a mesh
+                    this.jumpPath = new THREE.Mesh(pathGeometry, pathMaterial);
                     this.scene.add(this.jumpPath);
                 }
                 

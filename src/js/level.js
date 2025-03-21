@@ -259,7 +259,7 @@ export class Level {
                 const x = groupStartX + (i * spikeSpacing);
                 // Place spikes exactly at ground level (no floating)
                 const y = this.groundY + 0.15; // Just a tiny bit above ground for visual clarity
-                const size = 0.8 + Math.random() * 0.6; // Slightly varied spike sizes for visual interest
+                const size = 0.5 + Math.random() * 0.3; // Smaller spike sizes (was 0.8 + random * 0.6)
                 
                 const spike = this.levelBuilder.createSpike(x, y, size);
                 this.obstacles.push(spike);
@@ -304,7 +304,7 @@ export class Level {
                     const spikeX = groupStartX + (j * spikeSpacing);
                     // Place spikes directly on top of the platform
                     const spikeY = this.groundY + height + 0.9;
-                    const spikeSize = 0.7 + Math.random() * 0.3;
+                    const spikeSize = 0.4 + Math.random() * 0.2; // Smaller spikes (was 0.7 + random * 0.3)
                     
                     const spike = this.levelBuilder.createSpike(spikeX, spikeY, spikeSize);
                     
@@ -339,7 +339,7 @@ export class Level {
             
             // Occasionally add a spike on the platform (less frequent)
             if (Math.random() > 0.7) {
-                const spike = this.levelBuilder.createSpike(x, this.groundY + height + 0.6, 0.8);
+                const spike = this.levelBuilder.createSpike(x, this.groundY + height + 0.6, 0.5); // Smaller spike (was 0.8)
                 
                 // Track that this spike is on a platform
                 spike.onPlatform = true;
@@ -367,7 +367,7 @@ export class Level {
             const x = groupStartX + (i * spikeSpacing);
             // Place spikes exactly at ground level
             const y = this.groundY + 0.15;
-            const size = 0.8 + Math.random() * 0.4;
+            const size = 0.5 + Math.random() * 0.2; // Smaller spikes (was 0.8 + random * 0.4)
             
             const spike = this.levelBuilder.createSpike(x, y, size);
             this.obstacles.push(spike);
@@ -400,7 +400,7 @@ export class Level {
             const x = groupStartX + (i * spikeSpacing);
             // Place spikes directly on the platform
             const y = platformY + 0.15 + platform.height/2;
-            const size = 0.7;
+            const size = 0.5; // Smaller spikes (was 0.7)
             
             const spike = this.levelBuilder.createSpike(x, y, size);
             this.obstacles.push(spike);
@@ -484,7 +484,7 @@ export class Level {
                 for (let j = 0; j < spikeCount; j++) {
                     const spikeX = x + (j - (spikeCount - 1) / 2) * spikeSpacing;
                     const spikeY = y + (platHeight / 2) + 0.05; // On top of platform
-                    const spikeSize = 0.5 + Math.random() * 0.2;
+                    const spikeSize = 0.3 + Math.random() * 0.2; // Smaller spikes (was 0.5 + random * 0.2)
                     
                     const spike = this.levelBuilder.createSpike(spikeX, spikeY, spikeSize);
                     
@@ -536,12 +536,12 @@ export class Level {
         this.platforms.push(rightPlatform);
         
         // Generate spikes in the gap
-        const spikeCount = Math.floor(gapWidth / 0.8); // Space spikes evenly
+        const spikeCount = Math.floor(Math.random() * 3) + 3; // 3-5 spikes in a group (more defined count)
         const spikeSpacing = gapWidth / spikeCount;
         
         for (let i = 0; i < spikeCount; i++) {
             const spikeX = xPosition - gapWidth/2 + (i + 0.5) * spikeSpacing;
-            const spike = this.levelBuilder.createSpike(spikeX, this.groundY + 0.15, 0.7);
+            const spike = this.levelBuilder.createSpike(spikeX, this.groundY + 0.15, 0.5); // Smaller spikes (was 0.7)
             this.obstacles.push(spike);
         }
     }
@@ -668,13 +668,26 @@ export class Level {
         const portalX = this.currentLevelPosition + 50; // Place it ahead of current position
         const portalY = this.groundY + 6; // Position it 6 units above the ground
         
+        // Get next color scheme (different from current)
+        const currentScheme = this.game.currentColorScheme;
+        const availableSchemes = [...this.game.availableColorSchemes];
+        const currentIndex = availableSchemes.indexOf(currentScheme);
+        
+        // Choose a different scheme for the portal preview
+        let nextIndex;
+        do {
+            nextIndex = Math.floor(Math.random() * availableSchemes.length);
+        } while (nextIndex === currentIndex || Math.abs(nextIndex - currentIndex) < 2);
+        
+        const nextColorScheme = this.game.colorSchemes[availableSchemes[nextIndex]];
+        
         // Create portal with a more visually appealing design
         const portalGroup = new THREE.Group();
         
-        // Create outer ring
+        // Create outer ring with next level's color
         const outerRingGeometry = new THREE.RingGeometry(3, 3.5, 32);
         const outerRingMaterial = new THREE.MeshBasicMaterial({
-            color: this.colors.accent,
+            color: nextColorScheme.platforms,
             side: THREE.DoubleSide
         });
         const outerRing = new THREE.Mesh(outerRingGeometry, outerRingMaterial);
@@ -683,15 +696,15 @@ export class Level {
         // Create inner circle (portal center)
         const innerCircleGeometry = new THREE.CircleGeometry(2.8, 32);
         const innerCircleMaterial = new THREE.MeshBasicMaterial({
-            color: 0x000000,
+            color: nextColorScheme.background,
             transparent: true,
-            opacity: 0.7,
+            opacity: 0.8,
             side: THREE.DoubleSide
         });
         const innerCircle = new THREE.Mesh(innerCircleGeometry, innerCircleMaterial);
         portalGroup.add(innerCircle);
         
-        // Create swirl effect
+        // Create swirl effect using next level's accent color
         const swirlGeometry = new THREE.BufferGeometry();
         const vertices = [];
         const numSpirals = 2;
@@ -710,14 +723,14 @@ export class Level {
         }
         
         swirlGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        const swirlMaterial = new THREE.LineBasicMaterial({ color: this.colors.primary || this.colors.platforms });
+        const swirlMaterial = new THREE.LineBasicMaterial({ color: nextColorScheme.accent });
         const swirl = new THREE.Line(swirlGeometry, swirlMaterial);
         portalGroup.add(swirl);
         
         // Create portal glow
         const glowGeometry = new THREE.CircleGeometry(4, 32);
         const glowMaterial = new THREE.MeshBasicMaterial({
-            color: this.colors.accent,
+            color: nextColorScheme.accent,
             transparent: true,
             opacity: 0.3,
             side: THREE.DoubleSide

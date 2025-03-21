@@ -280,29 +280,43 @@ export class GameUI {
             this.levelMessage.style.left = '50%';
             this.levelMessage.style.transform = 'translate(-50%, -50%)';
             this.levelMessage.style.fontFamily = '"Orbitron", "Rajdhani", monospace';
-            this.levelMessage.style.fontSize = '42px';
+            this.levelMessage.style.fontSize = '48px';
             this.levelMessage.style.fontWeight = 'bold';
             this.levelMessage.style.textAlign = 'center';
-            this.levelMessage.style.padding = '20px 30px';
-            this.levelMessage.style.borderRadius = '10px';
+            this.levelMessage.style.padding = '25px 40px';
+            this.levelMessage.style.borderRadius = '15px';
             this.levelMessage.style.backgroundColor = 'rgba(0, 10, 30, 0.8)';
             this.levelMessage.style.zIndex = '1000';
             this.levelMessage.style.opacity = '0';
-            this.levelMessage.style.transition = 'opacity 0.5s ease-in-out';
+            this.levelMessage.style.transition = 'all 0.5s ease-in-out';
+            this.levelMessage.style.transform = 'translate(-50%, -50%) scale(0.8)';
             this.container.appendChild(this.levelMessage);
         }
         
         // Update text and styling based on the game's current color scheme
         this.levelMessage.textContent = message;
         const accentColor = this.game.colorSchemes[this.game.currentColorScheme].accent;
+        const platformColor = this.game.colorSchemes[this.game.currentColorScheme].platforms;
         const accentHex = this.convertToHex(accentColor);
-        this.levelMessage.style.color = accentHex;
-        this.levelMessage.style.border = `3px solid ${accentHex}`;
-        this.levelMessage.style.boxShadow = `0 0 20px ${accentHex}, inset 0 0 10px ${accentHex}`;
-        this.levelMessage.style.textShadow = `0 0 10px ${accentHex}`;
+        const platformHex = this.convertToHex(platformColor);
         
-        // Show message with fade-in effect
-        this.levelMessage.style.opacity = '1';
+        // Enhanced styling for level messages
+        this.levelMessage.style.color = accentHex;
+        this.levelMessage.style.border = `4px solid ${platformHex}`;
+        this.levelMessage.style.boxShadow = `0 0 25px ${accentHex}, inset 0 0 15px ${platformHex}`;
+        this.levelMessage.style.textShadow = `0 0 15px ${accentHex}, 0 0 5px ${platformHex}`;
+        this.levelMessage.style.letterSpacing = '2px';
+        
+        // Show message with enhanced effect
+        setTimeout(() => {
+            this.levelMessage.style.opacity = '1';
+            this.levelMessage.style.transform = 'translate(-50%, -50%) scale(1.1)';
+            
+            // Then settle to normal size
+            setTimeout(() => {
+                this.levelMessage.style.transform = 'translate(-50%, -50%) scale(1)';
+            }, 150);
+        }, 10);
         
         // Clear any existing timeout
         if (this.levelMessageTimeout) {
@@ -312,6 +326,7 @@ export class GameUI {
         // Hide message after duration
         this.levelMessageTimeout = setTimeout(() => {
             this.levelMessage.style.opacity = '0';
+            this.levelMessage.style.transform = 'translate(-50%, -50%) scale(0.8)';
         }, duration);
     }
     

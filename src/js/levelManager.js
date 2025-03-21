@@ -8,6 +8,7 @@ export class LevelManager {
         this.currentLevel = 1;
         this.portalPlaced = false;
         this.startPlaced = false;
+        this.previousTitles = [];
         
         // Cache for the parsed JSON files
         this.levelCache = {};
@@ -122,12 +123,32 @@ export class LevelManager {
         // Higher difficulty = more sections
         const sectionCount = 2 + Math.min(Math.floor(difficulty * 0.8), 4);
         
-        // Randomly select middle titles
+        // Randomly select middle titles, ensuring we don't reuse too many from the previous level
         const selectedTitles = [];
+        const availableTitlesCopy = [...availableTitles]; // Create a copy to modify
+        
+        // Filter out most of the previously used titles to ensure variety
+        const titlesToAvoid = this.previousTitles.slice(0, Math.floor(this.previousTitles.length * 0.7));
+        const filteredTitles = availableTitlesCopy.filter(title => 
+            !titlesToAvoid.some(prevTitle => 
+                prevTitle.title === title.title
+            )
+        );
+        
+        // Use the filtered titles if we have enough, otherwise use all available titles
+        const titlePool = filteredTitles.length >= sectionCount ? filteredTitles : availableTitlesCopy;
+        
+        // Select titles for this level
         for (let i = 0; i < sectionCount; i++) {
-            const randomIndex = Math.floor(Math.random() * availableTitles.length);
-            selectedTitles.push(availableTitles[randomIndex]);
+            if (titlePool.length === 0) break;
+            
+            const randomIndex = Math.floor(Math.random() * titlePool.length);
+            const selectedTitle = titlePool.splice(randomIndex, 1)[0];
+            selectedTitles.push(selectedTitle);
         }
+        
+        // Remember these titles for next time
+        this.previousTitles = [...selectedTitles];
         
         // Get a theme from one of the selected titles or create a default theme
         let theme = null;

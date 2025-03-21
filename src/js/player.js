@@ -175,6 +175,7 @@ export class Player {
             this.velocity.y = 0;
             this.isJumping = false;
             this.onGround = true;
+            this.jumpCount = 0; // Reset jump count when landing on ground
         } else {
             this.onGround = false;
         }
@@ -182,6 +183,7 @@ export class Player {
         // Handle platform state
         if (this.onPlatform) {
             this.isJumping = false;
+            this.jumpCount = 0; // Reset jump count when on platform
             
             // Keep the mesh rotated at 45 degrees when on platform
             const targetRotation = Math.PI / 4;
@@ -200,10 +202,11 @@ export class Player {
 
     jump() {
         // Allow jumping when on the ground or on a platform
-        if (!this.isJumping) {
+        if (!this.isJumping || this.onGround || this.onPlatform) {
             this.velocity.y = this.jumpForce;
             this.isJumping = true;
             this.onPlatform = false; // No longer on platform when jumping
+            this.jumpCount = (this.jumpCount || 0) + 1; // Track jump count for debugging
             // Thrust effect has been explicitly removed per request
         }
     }

@@ -393,10 +393,19 @@ export class Game {
         // This ensures each level has a noticeably different appearance
         const availableSchemes = [...this.availableColorSchemes];
         const currentIndex = availableSchemes.indexOf(this.currentColorScheme);
-        const nextIndex = (currentIndex + 2) % availableSchemes.length; // Skip one scheme for more contrast
+        
+        // Force a new color scheme - ensure it's different by picking one at least 2 positions away
+        let nextIndex;
+        do {
+            nextIndex = Math.floor(Math.random() * availableSchemes.length);
+        } while (nextIndex === currentIndex || Math.abs(nextIndex - currentIndex) < 2);
+        
         this.currentColorScheme = availableSchemes[nextIndex];
         
         console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
+        
+        // Display level transition message
+        this.ui.showLevelMessage(`LEVEL ${this.currentLevel}`, 2000);
         
         // Update background with new color scheme using gradient
         // First remove existing background
@@ -419,7 +428,7 @@ export class Game {
         // Create new level with new color scheme
         this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
         
-        // Load a tile-based level design
+        // Load a tile-based level design with forced regeneration
         this.loadTileBasedLevel();
         
         // Update player colors
@@ -445,6 +454,9 @@ export class Game {
         const playerX = this.player.mesh.position.x;
         const playerY = this.player.mesh.position.y;
         
+        // Get next color scheme to use in the effect
+        const nextColorScheme = this.colorSchemes[this.currentColorScheme];
+        
         // Create a flash effect
         const flashGeometry = new THREE.PlaneGeometry(window.innerWidth / 20, window.innerHeight / 20);
         const flashMaterial = new THREE.MeshBasicMaterial({
@@ -457,15 +469,21 @@ export class Game {
         this.scene.add(flash);
         
         // Create particles for the teleport effect
-        const particleCount = 50;
+        const particleCount = 100; // Increased for more dramatic effect
         const particles = new THREE.Group();
         
         // Add particles radiating from the player
         for (let i = 0; i < particleCount; i++) {
             const size = Math.random() * 0.5 + 0.2;
             const geometry = new THREE.PlaneGeometry(size, size);
+            
+            // Use colors from the next color scheme
+            const useColor = i % 3 === 0 ? 
+                nextColorScheme.platforms : 
+                (i % 3 === 1 ? nextColorScheme.accent : nextColorScheme.player);
+                
             const material = new THREE.MeshBasicMaterial({
-                color: this.colorSchemes[this.currentColorScheme].accent,
+                color: useColor,
                 transparent: true,
                 opacity: 1
             });
@@ -477,11 +495,11 @@ export class Game {
             
             // Calculate random angle and distance
             const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * 3;
+            const distance = Math.random() * 6; // Increased for more spread
             
             // Set velocity based on angle
-            particle.userData.velocityX = Math.cos(angle) * 10;
-            particle.userData.velocityY = Math.sin(angle) * 10;
+            particle.userData.velocityX = Math.cos(angle) * (10 + Math.random() * 10); // Varied speeds
+            particle.userData.velocityY = Math.sin(angle) * (10 + Math.random() * 10);
             particle.userData.distance = distance;
             
             // Add to particle group
@@ -490,17 +508,26 @@ export class Game {
         
         this.scene.add(particles);
         
-        // Create wave effect
-        const waveGeometry = new THREE.RingGeometry(0, 1, 32);
-        const waveMaterial = new THREE.MeshBasicMaterial({
-            color: this.colorSchemes[this.currentColorScheme].platforms,
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide
-        });
-        const wave = new THREE.Mesh(waveGeometry, waveMaterial);
-        wave.position.set(playerX, playerY, 0.3);
-        this.scene.add(wave);
+        // Create multiple wave effects with next theme colors
+        const waveCount = 3;
+        const waves = [];
+        
+        for (let i = 0; i < waveCount; i++) {
+            const waveGeometry = new THREE.RingGeometry(0, 1, 32);
+            const waveMaterial = new THREE.MeshBasicMaterial({
+                color: i === 0 ? nextColorScheme.platforms : 
+                      i === 1 ? nextColorScheme.accent : nextColorScheme.player,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            const wave = new THREE.Mesh(waveGeometry, waveMaterial);
+            wave.position.set(playerX, playerY, 0.3 - i * 0.1);
+            wave.userData.delay = i * 0.2; // Stagger the waves
+            wave.userData.speed = 1 + i * 0.5; // Different speeds
+            this.scene.add(wave);
+            waves.push(wave);
+        }
         
         // Animate the teleport effect
         let time = 0;
@@ -508,39 +535,50 @@ export class Game {
             time += 0.05;
             
             // Flash animation
-            flash.scale.x = 1 + time;
-            flash.scale.y = 1 + time;
-            flash.material.opacity = 1 - time / 1.5;
+            flash.material.opacity = 1 - time / 0.5;
+            flash.scale.x = 1 + time * 2;
+            flash.scale.y = 1 + time * 2;
             
             // Wave animation
-            wave.scale.x = time * 5;
-            wave.scale.y = time * 5;
-            wave.material.opacity = 0.7 - time / 1.5;
+            waves.forEach(wave => {
+                // Only start animating a wave after its delay
+                if (time > wave.userData.delay) {
+                    const waveTime = time - wave.userData.delay;
+                    wave.scale.x = waveTime * 5 * wave.userData.speed;
+                    wave.scale.y = waveTime * 5 * wave.userData.speed;
+                    wave.material.opacity = Math.max(0, 0.7 - waveTime / 1.5);
+                }
+            });
             
             // Particle animation
             particles.children.forEach(particle => {
-                // Move particles outward
-                particle.position.x += particle.userData.velocityX * 0.05;
-                particle.position.y += particle.userData.velocityY * 0.05;
+                particle.position.x += particle.userData.velocityX * 0.03;
+                particle.position.y += particle.userData.velocityY * 0.03;
+                particle.material.opacity = 1 - time / 0.8;
                 
-                // Fade particles
-                particle.material.opacity = 1 - time / 1.5;
+                // Rotate particle for visual interest
+                particle.rotation.z += 0.1;
             });
             
-            // Continue animation until complete
-            if (time < 1.5) {
+            // Continue animation until completed
+            if (time < 1) {
                 requestAnimationFrame(animateTeleport);
             } else {
-                // Clean up effect objects
+                // Clean up animation elements
                 this.scene.remove(flash);
                 this.scene.remove(particles);
-                this.scene.remove(wave);
                 
+                // Remove all wave objects
+                waves.forEach(wave => this.scene.remove(wave));
+                
+                // Dispose of geometries and materials
                 flash.geometry.dispose();
                 flash.material.dispose();
                 
-                wave.geometry.dispose();
-                wave.material.dispose();
+                waves.forEach(wave => {
+                    wave.geometry.dispose();
+                    wave.material.dispose();
+                });
                 
                 particles.children.forEach(particle => {
                     particle.geometry.dispose();
@@ -549,7 +587,7 @@ export class Game {
             }
         };
         
-        // Start animation
+        // Start the teleport animation
         animateTeleport();
     }
 

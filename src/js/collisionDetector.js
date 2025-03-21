@@ -276,10 +276,21 @@ export class CollisionDetector {
         const dy = playerY - portalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
+        // Store the last check time to avoid multiple triggers
+        const now = performance.now();
+        if (!this.lastPortalCheck) this.lastPortalCheck = 0;
+        
         // Check if player is close enough to the portal
         // Increased detection radius for more reliable portal detection
-        if (distance < 3.5) {
+        if (distance < 3.5 && now - this.lastPortalCheck > 1000) {
             console.log("Portal collision detected! Distance:", distance);
+            this.lastPortalCheck = now;
+            
+            // Show a message that the portal is being entered
+            if (this.level.game && this.level.game.ui) {
+                this.level.game.ui.showLevelMessage("ENTERING PORTAL", 1000);
+            }
+            
             return true;
         }
         
