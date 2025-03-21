@@ -39,7 +39,34 @@ export class GameUI {
         this.scoreDisplay.style.textShadow = '0 0 5px #00FFFF';
         this.scoreDisplay.style.letterSpacing = '1px';
         this.scoreDisplay.style.zIndex = '10';
-        this.container.appendChild(this.scoreDisplay);
+        
+        // Create a containing box around score similar to the pause button
+        this.scoreBox = document.createElement('div');
+        this.scoreBox.id = 'score-box';
+        this.scoreBox.style.position = 'absolute';
+        this.scoreBox.style.top = '20px';
+        this.scoreBox.style.left = '20px';
+        this.scoreBox.style.padding = '5px';
+        this.scoreBox.style.borderRadius = '8px';
+        this.scoreBox.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        this.scoreBox.style.border = '2px solid #00FFFF';
+        this.scoreBox.style.boxShadow = '0 0 10px #00FFFF, inset 0 0 5px #00FFFF';
+        this.scoreBox.style.zIndex = '10';
+        this.scoreBox.style.display = 'flex';
+        this.scoreBox.style.justifyContent = 'center';
+        this.scoreBox.style.alignItems = 'center';
+        
+        // Add score display to the box
+        this.scoreBox.appendChild(this.scoreDisplay);
+        this.scoreDisplay.style.position = 'relative';
+        this.scoreDisplay.style.top = 'auto';
+        this.scoreDisplay.style.left = 'auto';
+        this.scoreDisplay.style.border = 'none';
+        this.scoreDisplay.style.boxShadow = 'none';
+        this.scoreDisplay.style.backgroundColor = 'transparent';
+        
+        // Add score box to the container
+        this.container.appendChild(this.scoreBox);
         
         // Load Tron-style fonts
         const fontLink = document.createElement('link');
@@ -241,6 +268,51 @@ export class GameUI {
         if (originalGameOverUI) {
             originalGameOverUI.style.display = 'none';
         }
+    }
+    
+    showLevelMessage(message, duration = 3000) {
+        // Create message element if it doesn't exist
+        if (!this.levelMessage) {
+            this.levelMessage = document.createElement('div');
+            this.levelMessage.id = 'level-message';
+            this.levelMessage.style.position = 'absolute';
+            this.levelMessage.style.top = '50%';
+            this.levelMessage.style.left = '50%';
+            this.levelMessage.style.transform = 'translate(-50%, -50%)';
+            this.levelMessage.style.fontFamily = '"Orbitron", "Rajdhani", monospace';
+            this.levelMessage.style.fontSize = '42px';
+            this.levelMessage.style.fontWeight = 'bold';
+            this.levelMessage.style.textAlign = 'center';
+            this.levelMessage.style.padding = '20px 30px';
+            this.levelMessage.style.borderRadius = '10px';
+            this.levelMessage.style.backgroundColor = 'rgba(0, 10, 30, 0.8)';
+            this.levelMessage.style.zIndex = '1000';
+            this.levelMessage.style.opacity = '0';
+            this.levelMessage.style.transition = 'opacity 0.5s ease-in-out';
+            this.container.appendChild(this.levelMessage);
+        }
+        
+        // Update text and styling based on the game's current color scheme
+        this.levelMessage.textContent = message;
+        const accentColor = this.game.colorSchemes[this.game.currentColorScheme].accent;
+        const accentHex = this.convertToHex(accentColor);
+        this.levelMessage.style.color = accentHex;
+        this.levelMessage.style.border = `3px solid ${accentHex}`;
+        this.levelMessage.style.boxShadow = `0 0 20px ${accentHex}, inset 0 0 10px ${accentHex}`;
+        this.levelMessage.style.textShadow = `0 0 10px ${accentHex}`;
+        
+        // Show message with fade-in effect
+        this.levelMessage.style.opacity = '1';
+        
+        // Clear any existing timeout
+        if (this.levelMessageTimeout) {
+            clearTimeout(this.levelMessageTimeout);
+        }
+        
+        // Hide message after duration
+        this.levelMessageTimeout = setTimeout(() => {
+            this.levelMessage.style.opacity = '0';
+        }, duration);
     }
     
     // Highlight the score with a pulse animation

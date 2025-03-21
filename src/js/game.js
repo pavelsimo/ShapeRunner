@@ -168,24 +168,16 @@ export class Game {
     }
 
     update(deltaTime) {
+        if (this.isPaused || !this.isRunning) return;
+        
         // Move level elements
         this.level.update(deltaTime, this.gameSpeed);
         
         // Update player
         this.player.update(deltaTime);
         
-        // Check for level completion
-        if (this.level.portalExists) {
-            if (this.collisionDetector.checkPortalCollision()) {
-                this.nextLevel();
-                return;
-            }
-        }
-        
-        // Check for collisions
-        if (this.collisionDetector.checkCollisions()) {
-            this.gameOver();
-        }
+        // Check for collisions and portal
+        this.checkGameOver();
         
         // Update camera to follow player
         this.camera.position.x = this.player.mesh.position.x;
@@ -335,6 +327,7 @@ export class Game {
                 background: new THREE.Color(levelData.theme.background),
                 platforms: new THREE.Color(levelData.theme.platforms),
                 player: new THREE.Color(levelData.theme.player),
+                spikes: 0xffdd00, // Default color for spikes
                 accent: new THREE.Color(levelData.theme.accent)
             };
             this.currentColorScheme = 'custom';
@@ -352,6 +345,9 @@ export class Game {
             const hexColor = levelData.theme.background;
             const color = new THREE.Color(hexColor);
             this.createGradientBackground(color.getHex());
+            
+            // Update the levelBuilder with the new color scheme
+            this.levelBuilder = new LevelBuilder(this.scene, this.colorSchemes.custom);
             
             // Update player colors
             this.player.updateColors(this.colorSchemes.custom);
@@ -381,19 +377,26 @@ export class Game {
     }
 
     nextLevel() {
+        console.log("Starting next level transition!");
+        
         // Create teleportation effect
         this.createTeleportEffect();
         
         // Increment level counter
         this.currentLevel++;
+        console.log("Moving to level:", this.currentLevel);
         
-        // Change color scheme
+        // Select a new color scheme different from the current one
         const previousColorScheme = this.currentColorScheme;
-        // Select a new color scheme that's different from the current one
-        do {
-            const randomIndex = Math.floor(Math.random() * this.availableColorSchemes.length);
-            this.currentColorScheme = this.availableColorSchemes[randomIndex];
-        } while (this.currentColorScheme === previousColorScheme);
+        
+        // Force a distinct color theme change by rotating through available schemes
+        // This ensures each level has a noticeably different appearance
+        const availableSchemes = [...this.availableColorSchemes];
+        const currentIndex = availableSchemes.indexOf(this.currentColorScheme);
+        const nextIndex = (currentIndex + 2) % availableSchemes.length; // Skip one scheme for more contrast
+        this.currentColorScheme = availableSchemes[nextIndex];
+        
+        console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
         
         // Update background with new color scheme using gradient
         // First remove existing background
@@ -410,7 +413,10 @@ export class Game {
         // Clear existing level
         this.level.clear();
         
-        // Create new level with new color scheme - pass the game reference
+        // Create new levelBuilder with new color scheme
+        this.levelBuilder = new LevelBuilder(this.scene, this.colorSchemes[this.currentColorScheme]);
+        
+        // Create new level with new color scheme
         this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
         
         // Load a tile-based level design
@@ -430,6 +436,8 @@ export class Game {
         
         // Update UI colors to match new color scheme
         this.updateUIColors();
+        
+        console.log("Level transition complete!");
     }
     
     createTeleportEffect() {
@@ -701,6 +709,7 @@ NOTE:
         // Check for portal collision (level completion)
         if (this.collisionDetector && this.collisionDetector.checkPortalCollision()) {
             // Level completed
+            console.log("Portal collision detected! Changing level...");
             this.nextLevel();
         }
     }

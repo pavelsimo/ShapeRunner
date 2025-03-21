@@ -190,8 +190,11 @@ export class Player {
         
         // Update rotation if in the air (not on ground or platform)
         if (!this.onGround && !this.onPlatform) {
-            this.mesh.rotation.z += 3 * deltaTime;
+            // No rotation effect - keep player at fixed orientation
             this.isJumping = true;
+            
+            // Maintain the 45-degree rotation at all times
+            this.mesh.rotation.z = Math.PI / 4;
         }
     }
 
@@ -201,112 +204,8 @@ export class Player {
             this.velocity.y = this.jumpForce;
             this.isJumping = true;
             this.onPlatform = false; // No longer on platform when jumping
-            
-            // Add particle effect for jump
-            this.createJumpParticles();
+            // Thrust effect has been explicitly removed per request
         }
-    }
-
-    createJumpParticles() {
-        // Create a fireworks-like particle effect when jumping
-        const particleCount = 30; // Increased from 10
-        const particles = new THREE.Group();
-        
-        // Colors for particles: white, player color, and accent color
-        const particleColors = [
-            0xFFFFFF, // White
-            this.colors.player, // Player color
-            this.colors.accent, // Accent color
-        ];
-        
-        for (let i = 0; i < particleCount; i++) {
-            // Random size with more variation
-            const size = Math.random() * 0.4 + 0.05; // More size variation
-            const geometry = new THREE.PlaneGeometry(size, size);
-            
-            // Randomly select a color from the available colors
-            const colorIndex = Math.floor(Math.random() * particleColors.length);
-            const particleColor = particleColors[colorIndex];
-            
-            const material = new THREE.MeshBasicMaterial({
-                color: particleColor,
-                transparent: true,
-                opacity: 0.9
-            });
-            
-            const particle = new THREE.Mesh(geometry, material);
-            
-            // Position around player bottom
-            particle.position.x = this.mesh.position.x + (Math.random() * 1.2 - 0.6);
-            particle.position.y = this.mesh.position.y - this.size/2;
-            particle.position.z = 0.1;
-            
-            // More varied velocity for fireworks effect
-            const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 6 + 2;
-            
-            particle.userData.velocity = {
-                x: Math.cos(angle) * speed * 0.2,
-                y: Math.sin(angle) * speed * 0.4 + 1.5
-            };
-            
-            // Life span with more variation
-            particle.userData.life = 1.0 + Math.random() * 0.5;
-            particle.userData.decay = Math.random() * 0.15 + 0.25;
-            
-            // Add rotation to particles
-            particle.userData.rotationSpeed = (Math.random() - 0.5) * 0.2;
-            
-            particles.add(particle);
-        }
-        
-        this.scene.add(particles);
-        
-        // Animate particles with improved animation
-        const animateParticles = () => {
-            let allDead = true;
-            
-            particles.children.forEach(particle => {
-                // Move particle
-                particle.position.x += particle.userData.velocity.x;
-                particle.position.y += particle.userData.velocity.y;
-                
-                // Apply gravity after initial burst
-                particle.userData.velocity.y -= 0.15;
-                
-                // Add rotation to particles
-                particle.rotation.z += particle.userData.rotationSpeed;
-                
-                // Gradually slow down horizontal movement
-                particle.userData.velocity.x *= 0.98;
-                
-                // Decay life
-                particle.userData.life -= particle.userData.decay * 0.1;
-                
-                // Update opacity and scale for fade-out effect
-                const lifeRatio = particle.userData.life;
-                particle.material.opacity = lifeRatio;
-                particle.scale.set(lifeRatio, lifeRatio, 1);
-                
-                if (particle.userData.life > 0) {
-                    allDead = false;
-                }
-            });
-            
-            // Render particles
-            if (!allDead) {
-                requestAnimationFrame(animateParticles);
-            } else {
-                // Remove particles from scene
-                this.scene.remove(particles);
-                particles.children.forEach(particle => {
-                    particle.geometry.dispose();
-                    particle.material.dispose();
-                });
-            }
-        };
-        
-        animateParticles();
     }
 
     reset() {
@@ -319,7 +218,9 @@ export class Player {
         this.isJumping = false;
         this.onPlatform = false;
         this.onGround = false;
-        this.mesh.rotation.z = 0;
+        
+        // Keep the rotation at 45 degrees to maintain diamond shape
+        this.mesh.rotation.z = Math.PI / 4;
     }
 
     remove() {

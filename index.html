@@ -600,23 +600,8 @@
                     this.player.add(glowMesh);
                     this.playerGlow = glowMesh;
                     
-                    // Add a trailing effect made of particles
-                    this.trailParticles = [];
-                    const particleCount = 5;
-                    for (let i = 0; i < particleCount; i++) {
-                        const size = this.playerSize * (0.3 + (i * 0.1));
-                        const trailGeometry = new THREE.BoxGeometry(size, size, size * 0.3);
-                        const trailMaterial = new THREE.MeshBasicMaterial({
-                            color: 0x00FFFF,
-                            transparent: true,
-                            opacity: 0.2 - (i * 0.03),
-                            blending: THREE.AdditiveBlending
-                        });
-                        const trailParticle = new THREE.Mesh(trailGeometry, trailMaterial);
-                        trailParticle.position.x = -0.5 - (i * 0.2);
-                        this.scene.add(trailParticle);
-                        this.trailParticles.push(trailParticle);
-                    }
+                    // Trail particles have been removed per request
+                    this.trailParticles = null;
                     
                     // Initialize jump particle system
                     this.jumpParticles = [];
@@ -1092,14 +1077,7 @@
                     this.playerVelocity.y = 0;
                     this.isJumping = false;
                     
-                    // Reset trail particles
-                    if (this.trailParticles) {
-                        for (let i = 0; i < this.trailParticles.length; i++) {
-                            const particle = this.trailParticles[i];
-                            particle.position.x = this.player.position.x - 0.5 - (i * 0.2);
-                            particle.position.y = this.player.position.y;
-                        }
-                    }
+                    // Trail particles have been removed per request
                     
                     // Recreate level
                     this.createLevel();
@@ -1185,23 +1163,7 @@
                         }
                     }
                     
-                    // Update trail particles
-                    if (this.trailParticles) {
-                        for (let i = 0; i < this.trailParticles.length; i++) {
-                            const particle = this.trailParticles[i];
-                            const delay = 0.05 * (i + 1);
-                            const targetX = this.player.position.x - 0.5 - (i * 0.2);
-                            const targetY = this.player.position.y;
-                            
-                            // Smooth follow with increasing delay for each particle
-                            particle.position.x += (targetX - particle.position.x) * (10 * deltaTime);
-                            particle.position.y += (targetY - particle.position.y) * (10 * deltaTime);
-                            
-                            // Make particles pulse with different phases
-                            particle.scale.x = 1 + Math.sin(performance.now() * 0.005 + i * 0.5) * 0.1;
-                            particle.scale.y = 1 + Math.sin(performance.now() * 0.005 + i * 0.5) * 0.1;
-                        }
-                    }
+                    // Trail particles have been removed per request
                     
                     // Ground collision
                     if (this.player.position.y - this.playerSize/2 < this.groundY + 0.5) { // Add a small offset to ensure player is on top

@@ -4,6 +4,12 @@ export class LevelBuilder {
     constructor(scene, colorScheme) {
         this.scene = scene;
         this.colors = colorScheme;
+        this.uniqueObstacles = new Set();
+    }
+
+    clearUniqueObstacles() {
+        // Clear the set of unique obstacles when transitioning to a new level
+        this.uniqueObstacles.clear();
     }
 
     createSpike(x, y, size) {

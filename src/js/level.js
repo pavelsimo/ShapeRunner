@@ -651,120 +651,21 @@ export class Level {
     }
 
     update(deltaTime, gameSpeed) {
-        // Move all level elements to create scrolling effect
-        const moveAmount = gameSpeed * deltaTime;
+        // Update level elements
         
-        // Move obstacles
-        this.obstacles.forEach(obstacle => {
-            // Don't move spikes that are on platforms
-            if (obstacle.onPlatform) {
-                // Update spike position based on its platform
-                if (obstacle.platformRef) {
-                    const platformX = obstacle.platformRef.mesh.position.x;
-                    const platformY = obstacle.platformRef.mesh.position.y;
-                    obstacle.mesh.position.x = platformX + obstacle.platformOffsetX;
-                    obstacle.mesh.position.y = platformY + obstacle.platformOffsetY;
-                    obstacle.x = obstacle.mesh.position.x;
-                    obstacle.y = obstacle.mesh.position.y;
-                }
-            } else {
-                obstacle.mesh.position.x -= moveAmount;
-                obstacle.x -= moveAmount;
-            }
-            
-            // Check if obstacle is off-screen
-            if (obstacle.mesh.position.x < -50) {
-                // Remove from scene and list
-                this.scene.remove(obstacle.mesh);
-                this.obstacles = this.obstacles.filter(o => o !== obstacle);
-                
-                // Clean up geometry and material
-                if (obstacle.mesh.children) {
-                    obstacle.mesh.children.forEach(child => {
-                        if (child.geometry) child.geometry.dispose();
-                        if (child.material) child.material.dispose();
-                    });
-                }
-            }
-        });
-        
-        // Move platforms
-        this.platforms.forEach(platform => {
-            if (platform.type !== 'ground') { // Don't move the ground
-                platform.mesh.position.x -= moveAmount;
-                platform.x -= moveAmount;
-                
-                // Check if platform is off-screen
-                if (platform.mesh.position.x < -50) {
-                    // Remove from scene and list
-                    this.scene.remove(platform.mesh);
-                    this.platforms = this.platforms.filter(p => p !== platform);
-                    
-                    // Clean up geometry and material
-                    if (platform.mesh.children) {
-                        platform.mesh.children.forEach(child => {
-                            if (child.geometry) child.geometry.dispose();
-                            if (child.material) child.material.dispose();
-                        });
-                    }
-                }
-            }
-        });
-        
-        // Move portals
-        this.portals.forEach(portal => {
-            portal.mesh.position.x -= moveAmount;
-            portal.x -= moveAmount;
-        });
-        
-        // Update decorative elements (subtle movement)
-        this.decorations.forEach(decor => {
-            // Fixed background elements (like grid) stay fixed relative to camera
-            if (decor.userData && decor.userData.isFixedBackground) {
-                // Don't move fixed background
-                return;
-            }
-            
-            if (decor instanceof THREE.Group) {
-                decor.position.x -= moveAmount * 0.5; // Move background slower for parallax
-            } else {
-                decor.position.x -= moveAmount * 0.8;
-                
-                // Pulse effect for floating decorations
-                if (decor.userData.pulseFactor) {
-                    const pulse = Math.sin(performance.now() * 0.001 * decor.userData.pulseSpeed) * 0.2 + 0.8;
-                    decor.material.opacity = decor.userData.initialOpacity * pulse;
-                }
-                
-                // Check if decoration is off-screen
-                if (decor.position.x < -50) {
-                    // Remove from scene and list
-                    this.scene.remove(decor);
-                    this.decorations = this.decorations.filter(d => d !== decor);
-                    
-                    // Clean up geometry and material
-                    if (decor.geometry) decor.geometry.dispose();
-                    if (decor.material) decor.material.dispose();
-                }
-            }
-        });
-        
-        // Check if we should generate end portal
-        if (this.currentLevelPosition >= this.levelLength && !this.isLevelCompleted) {
+        // If portal doesn't exist yet and we've traveled far enough, create it
+        if (!this.portalExists && this.currentLevelPosition > this.levelLength - 100) {
+            this.portalExists = true;
             this.createLevelEndPortal();
-            this.isLevelCompleted = true;
-        } else if (!this.isLevelCompleted) {
-            // Generate new level segments as needed
-            const farthestObstacleX = this.getFarthestObstacleX();
-            if (farthestObstacleX < 50) { // Generate new segment when existing content is getting close
-                this.generateNextSegment();
-            }
         }
+        
+        // Update the level position based on game speed
+        this.currentLevelPosition += gameSpeed * deltaTime;
     }
-
+    
     createLevelEndPortal() {
         // Calculate portal position at the end of the level
-        const portalX = this.levelLength - 10; // Place it 10 units before the absolute end
+        const portalX = this.currentLevelPosition + 50; // Place it ahead of current position
         const portalY = this.groundY + 6; // Position it 6 units above the ground
         
         // Create portal with a more visually appealing design
@@ -809,7 +710,7 @@ export class Level {
         }
         
         swirlGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        const swirlMaterial = new THREE.LineBasicMaterial({ color: this.colors.primary });
+        const swirlMaterial = new THREE.LineBasicMaterial({ color: this.colors.primary || this.colors.platforms });
         const swirl = new THREE.Line(swirlGeometry, swirlMaterial);
         portalGroup.add(swirl);
         
@@ -831,7 +732,6 @@ export class Level {
         
         // Add portal to the level objects
         this.portalObject = portalGroup;
-        this.portalExists = true;
         
         // Add rotation animation for the portal
         const animate = () => {
@@ -852,6 +752,8 @@ export class Level {
         };
         const initialFrame = requestAnimationFrame(animate);
         this.animationFrames.push(initialFrame);
+        
+        console.log("Created portal at position:", portalX, portalY);
     }
 
     getFarthestObstacleX() {

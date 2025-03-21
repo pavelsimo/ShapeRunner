@@ -40,7 +40,9 @@ export class CollisionDetector {
                     // Reset vertical velocity for normal platforms
                     this.player.velocity.y = 0;
                     this.player.isJumping = false;
-                    this.player.mesh.rotation.z = 0; // Reset rotation when on platform
+                    
+                    // Maintain 45 degree rotation, don't reset it
+                    this.player.mesh.rotation.z = Math.PI / 4;
                     
                     // Signal to the player that they are on a platform
                     this.player.onPlatform = true;
@@ -253,8 +255,8 @@ export class CollisionDetector {
     }
 
     checkPortalCollision() {
-        // Early return if no portal or level is already completed
-        if (!this.level.portalExists || this.level.isLevelCompleted) return false;
+        // Early return if no portal exists
+        if (!this.level.portalExists) return false;
         
         const player = this.player.mesh;
         const portal = this.level.portalObject;
@@ -274,10 +276,10 @@ export class CollisionDetector {
         const dy = playerY - portalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Check if player is close enough to the portal (within 3 units)
-        if (distance < 3) {
-            // Set level as completed
-            this.level.isLevelCompleted = true;
+        // Check if player is close enough to the portal
+        // Increased detection radius for more reliable portal detection
+        if (distance < 3.5) {
+            console.log("Portal collision detected! Distance:", distance);
             return true;
         }
         
@@ -294,11 +296,14 @@ export class CollisionDetector {
         const particleCount = 15;
         const particles = new THREE.Group();
         
+        // Use theme accent color instead of hardcoded yellow
+        const particleColor = this.level.colors ? this.level.colors.accent : 0xFFFF00;
+        
         for (let i = 0; i < particleCount; i++) {
             const size = Math.random() * 0.3 + 0.1;
             const geometry = new THREE.PlaneGeometry(size, size);
             const material = new THREE.MeshBasicMaterial({
-                color: 0xFFFF00, // Yellow particles
+                color: particleColor,
                 transparent: true,
                 opacity: 0.8
             });
