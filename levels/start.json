@@ -1,0 +1,16 @@
+{
+  "title": "Starting Line",
+  "description": "The player starts here on every level",
+  "width": 10,
+  "height": 8,
+  "layout": [
+    "...........",
+    "...........",
+    "...........",
+    "...........",
+    "...........",
+    "....S......",
+    "BBBB.......",
+    "..........."
+  ]
+} 

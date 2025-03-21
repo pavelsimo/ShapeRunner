@@ -49,7 +49,7 @@ export class GameUI {
         
         // Game over UI with Tron-style
         this.gameOverUI = document.createElement('div');
-        this.gameOverUI.id = 'game-over-ui';
+        this.gameOverUI.id = 'game-over';
         this.gameOverUI.style.position = 'absolute';
         this.gameOverUI.style.top = '50%';
         this.gameOverUI.style.left = '50%';
@@ -71,7 +71,7 @@ export class GameUI {
         this.gameOverUI.style.zIndex = '1000';
         
         // Create game over header with animated glitch effect
-        const gameOverHeader = document.createElement('div');
+        const gameOverHeader = document.createElement('h2');
         gameOverHeader.textContent = 'GAME OVER';
         gameOverHeader.style.fontSize = '42px';
         gameOverHeader.style.fontWeight = 'bold';
@@ -91,8 +91,8 @@ export class GameUI {
         
         // Create restart button with Tron style
         const restartButton = document.createElement('button');
-        restartButton.id = 'restart-button';
-        restartButton.textContent = 'RESTART';
+        restartButton.id = 'retry-btn';
+        restartButton.textContent = 'RETRY';
         restartButton.style.marginTop = '20px';
         restartButton.style.padding = '12px 30px';
         restartButton.style.fontSize = '20px';
@@ -204,7 +204,7 @@ export class GameUI {
         this.gameOverUI.style.boxShadow = `0 0 20px ${accentColor}, inset 0 0 10px ${accentColor}`;
         
         // Update restart button colors
-        const restartButton = document.getElementById('restart-button');
+        const restartButton = document.getElementById('retry-btn');
         restartButton.style.borderColor = accentColor;
         restartButton.style.color = accentColor;
         restartButton.style.boxShadow = `0 0 10px ${accentColor}`;

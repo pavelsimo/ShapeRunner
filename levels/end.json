@@ -1,0 +1,16 @@
+{
+  "title": "Finish Line",
+  "description": "The end of every level with the exit portal",
+  "width": 10,
+  "height": 8,
+  "layout": [
+    "...........",
+    "...........",
+    "......E....",
+    ".....BBB...",
+    "...........",
+    "...........",
+    "BBBBBBBBBB.",
+    "..........."
+  ]
+} 

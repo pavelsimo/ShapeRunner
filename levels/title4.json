@@ -1,0 +1,16 @@
+{
+  "title": "Spike Gauntlet",
+  "description": "Navigate through a dangerous spike field",
+  "width": 20,
+  "height": 8,
+  "layout": [
+    ".....................",
+    "..........C..........",
+    "BBBB..........BBB....",
+    "....B........B.......",
+    "....B..^..^..B..C....",
+    "....BBBBBBBBB........",
+    "............J........",
+    "^.^.^.^.^.^.^B.^.^.^."
+  ]
+} 

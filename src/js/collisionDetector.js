@@ -27,13 +27,24 @@ export class CollisionDetector {
                 this.player.mesh.position.y = newY;
                 this.player.position.y = newY;
                 
-                // Reset vertical velocity
-                this.player.velocity.y = 0;
-                this.player.isJumping = false;
-                this.player.mesh.rotation.z = 0; // Reset rotation when on platform
-                
-                // Signal to the player that they are on a platform
-                this.player.onPlatform = true;
+                // Check if the platform is a jump pad
+                if (platform.isJumpPad) {
+                    // Apply a stronger jump force
+                    this.player.velocity.y = platform.jumpForce || this.player.jumpForce * 1.5;
+                    this.player.isJumping = true;
+                    this.player.onPlatform = false;
+                    
+                    // Create jump pad effect
+                    this.createJumpPadEffect(platform.x, platformTop);
+                } else {
+                    // Reset vertical velocity for normal platforms
+                    this.player.velocity.y = 0;
+                    this.player.isJumping = false;
+                    this.player.mesh.rotation.z = 0; // Reset rotation when on platform
+                    
+                    // Signal to the player that they are on a platform
+                    this.player.onPlatform = true;
+                }
                 
                 // Check if the player is near the edge of the platform
                 const playerCenter = this.player.mesh.position.x;
@@ -84,6 +95,11 @@ export class CollisionDetector {
             if (this.checkRectCollision(playerHitbox, obstacle)) {
                 return true; // Collision detected with hazard
             }
+        }
+        
+        // Check collectibles if they exist
+        if (this.level.collectibles && this.level.collectibles.length > 0) {
+            this.checkCollectibles(playerHitbox);
         }
         
         // No collisions detected
@@ -266,5 +282,213 @@ export class CollisionDetector {
         }
         
         return false;
+    }
+
+    /**
+     * Create a visual effect when the player activates a jump pad
+     * @param {number} x - X position of the jump pad
+     * @param {number} y - Y position of the jump pad top
+     */
+    createJumpPadEffect(x, y) {
+        // Create particles shooting up from the jump pad
+        const particleCount = 15;
+        const particles = new THREE.Group();
+        
+        for (let i = 0; i < particleCount; i++) {
+            const size = Math.random() * 0.3 + 0.1;
+            const geometry = new THREE.PlaneGeometry(size, size);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xFFFF00, // Yellow particles
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particle = new THREE.Mesh(geometry, material);
+            
+            // Position particles around jump pad
+            particle.position.x = x + (Math.random() * 2 - 1);
+            particle.position.y = y;
+            particle.position.z = 0.2;
+            
+            // Random upward velocity
+            particle.userData.velocity = {
+                x: Math.random() * 2 - 1,
+                y: Math.random() * 5 + 5
+            };
+            
+            // Life span
+            particle.userData.life = 1.0;
+            particle.userData.decay = Math.random() * 0.2 + 0.3;
+            
+            particles.add(particle);
+        }
+        
+        this.level.scene.add(particles);
+        
+        // Animate particles
+        const animateParticles = () => {
+            let allDead = true;
+            
+            particles.children.forEach(particle => {
+                // Move particle
+                particle.position.x += particle.userData.velocity.x * 0.1;
+                particle.position.y += particle.userData.velocity.y * 0.1;
+                
+                // Slow down vertical velocity
+                particle.userData.velocity.y -= 0.2;
+                
+                // Decay life
+                particle.userData.life -= particle.userData.decay * 0.1;
+                
+                // Update opacity
+                particle.material.opacity = particle.userData.life;
+                
+                if (particle.userData.life > 0) {
+                    allDead = false;
+                }
+            });
+            
+            // Continue animation if particles are still alive
+            if (!allDead) {
+                requestAnimationFrame(animateParticles);
+            } else {
+                // Remove particles from scene
+                this.level.scene.remove(particles);
+                particles.children.forEach(particle => {
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                });
+            }
+        };
+        
+        animateParticles();
+    }
+    
+    /**
+     * Check collisions with collectible items
+     * @param {Object} playerHitbox - The player's hitbox
+     */
+    checkCollectibles(playerHitbox) {
+        for (let i = 0; i < this.level.collectibles.length; i++) {
+            const collectible = this.level.collectibles[i];
+            
+            // Skip already collected items
+            if (collectible.collected) continue;
+            
+            // Check for collision
+            if (this.rectanglesIntersect(playerHitbox, collectible)) {
+                // Mark as collected
+                collectible.collected = true;
+                
+                // Remove from scene
+                this.level.scene.remove(collectible.mesh);
+                
+                // Handle different collectible types
+                switch (collectible.type) {
+                    case 'coin':
+                        // Increase score
+                        this.level.game.distance += collectible.value;
+                        this.createCollectEffect(collectible.x, collectible.y, 0xFFD700);
+                        break;
+                        
+                    case 'key':
+                        // Collect key - in a more complex game, this would unlock something
+                        this.level.hasKey = true;
+                        this.createCollectEffect(collectible.x, collectible.y, 0xFFFF00);
+                        break;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Create a collection effect when collecting an item
+     * @param {number} x - X position of the collectible
+     * @param {number} y - Y position of the collectible
+     * @param {number} color - Color of the effect
+     */
+    createCollectEffect(x, y, color) {
+        // Create a burst of particles
+        const particleCount = 12;
+        const particles = new THREE.Group();
+        
+        for (let i = 0; i < particleCount; i++) {
+            const size = Math.random() * 0.3 + 0.1;
+            const geometry = new THREE.PlaneGeometry(size, size);
+            const material = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particle = new THREE.Mesh(geometry, material);
+            
+            // Calculate angle for circular burst
+            const angle = (i / particleCount) * Math.PI * 2;
+            const speed = Math.random() * 2 + 2;
+            
+            // Position particles at collectible location
+            particle.position.x = x;
+            particle.position.y = y;
+            particle.position.z = 0.2;
+            
+            // Velocity in circle pattern
+            particle.userData.velocity = {
+                x: Math.cos(angle) * speed,
+                y: Math.sin(angle) * speed
+            };
+            
+            // Life span
+            particle.userData.life = 1.0;
+            particle.userData.decay = Math.random() * 0.05 + 0.05;
+            
+            particles.add(particle);
+        }
+        
+        this.level.scene.add(particles);
+        
+        // Animate particles
+        const animateParticles = () => {
+            let allDead = true;
+            
+            particles.children.forEach(particle => {
+                // Move particle
+                particle.position.x += particle.userData.velocity.x * 0.1;
+                particle.position.y += particle.userData.velocity.y * 0.1;
+                
+                // Slow down
+                particle.userData.velocity.x *= 0.95;
+                particle.userData.velocity.y *= 0.95;
+                
+                // Decay life
+                particle.userData.life -= particle.userData.decay;
+                
+                // Update opacity and scale based on life
+                particle.material.opacity = particle.userData.life;
+                particle.scale.set(
+                    particle.userData.life * 2, 
+                    particle.userData.life * 2, 
+                    1
+                );
+                
+                if (particle.userData.life > 0) {
+                    allDead = false;
+                }
+            });
+            
+            // Continue animation if particles are still alive
+            if (!allDead) {
+                requestAnimationFrame(animateParticles);
+            } else {
+                // Remove particles from scene
+                this.level.scene.remove(particles);
+                particles.children.forEach(particle => {
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                });
+            }
+        };
+        
+        animateParticles();
     }
 } 

@@ -1,3 +1,5 @@
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+
 export class LevelDesigner {
     constructor(level) {
         this.level = level;
@@ -7,26 +9,22 @@ export class LevelDesigner {
             // Empty space
             '.': null, // No platform
             
-            // Basic platforms
-            '#': 'platform',         // Regular platform
-            '=': 'ground',           // Ground-level platform
-            '^': 'spike',            // Ground spike
+            // Basic tiles
+            'B': 'platform',      // Solid Block
+            '^': 'spike',         // Spike
+            '/': 'slope_up',      // Slope Up
+            'J': 'jump_pad',      // Jump Pad
+            'C': 'coin',          // Coin
+            'P': 'portal',        // Portal
+            'K': 'key',           // Key
+            'O': 'saw',           // Saw Blade
+            'S': 'start',         // Start position
+            'E': 'end',           // End position
             
-            // Platform combinations
-            '/': 'stair_up',         // Upward stair
-            '\\': 'stair_down',      // Downward stair
-            'Z': 'zigzag',           // Zigzag platforms
-            
-            // Geometry Dash patterns
-            'G': 'central_spikes',   // Ground with central spikes
-            'E': 'elevated_spikes',  // Elevated platform with spikes below
-            'F': 'floating_platform', // Gap with floating platform
-            'V': 'vertical_challenge', // Vertical pillar challenge
-            
-            // Special elements
-            'P': 'portal',           // End portal
-            'S': 'saw',              // Saw blade obstacle
-            'D': 'decoration'        // Decorative element
+            // Legacy mappings for backwards compatibility
+            '#': 'platform',      // Old platform notation
+            'Z': 'zigzag',        // Zigzag platforms
+            'G': 'central_spikes' // Ground with central spikes
         };
         
         // Define height levels (0-9 represents height from ground)
@@ -219,7 +217,7 @@ export class LevelDesigner {
         
         switch (elementType) {
             case 'platform':
-                // Regular platform
+                // Regular platform/solid block
                 const platform = this.level.levelBuilder.createPlatform(
                     segmentX,
                     scaledHeight,
@@ -241,6 +239,119 @@ export class LevelDesigner {
                 this.level.currentLevelPosition += segmentWidth / 4; // Spikes are smaller
                 break;
                 
+            case 'slope_up':
+                // Upward slope
+                // Creating a series of small platforms in ascending order for the effect
+                const slopeWidth = segmentWidth * 0.8;
+                const slopeHeight = 1;
+                const sections = 5; // Number of small platforms to create the slope
+                
+                for (let i = 0; i < sections; i++) {
+                    const sectionX = segmentX - slopeWidth/2 + (i * slopeWidth/sections) + (slopeWidth/sections/2);
+                    const sectionY = scaledHeight + (i * slopeHeight/sections);
+                    const sectionWidth = slopeWidth/sections * 1.2; // Slight overlap
+                    
+                    const slopePlatform = this.level.levelBuilder.createPlatform(
+                        sectionX,
+                        sectionY,
+                        sectionWidth,
+                        0.2
+                    );
+                    this.level.platforms.push(slopePlatform);
+                }
+                
+                this.level.currentLevelPosition += segmentWidth;
+                break;
+                
+            case 'jump_pad':
+                // Jump pad - creates a platform with a bounce effect
+                const jumpPadSize = segmentWidth * 0.4;
+                const jumpPadHeight = 0.4;
+                
+                // Create visual for the jump pad
+                const jumpPad = this.level.levelBuilder.createPlatform(
+                    segmentX,
+                    scaledHeight,
+                    jumpPadSize,
+                    jumpPadHeight
+                );
+                
+                // Mark it as a jump pad
+                jumpPad.isJumpPad = true;
+                jumpPad.jumpForce = 25; // Higher than default jump
+                
+                // Change color to indicate it's a jump pad
+                if (jumpPad.mesh && jumpPad.mesh.children) {
+                    jumpPad.mesh.children.forEach(child => {
+                        if (child.material && child.material.color) {
+                            child.material.color.set(this.level.colors.accent);
+                        }
+                    });
+                }
+                
+                this.level.platforms.push(jumpPad);
+                this.level.currentLevelPosition += segmentWidth / 2;
+                break;
+                
+            case 'coin':
+                // Collectible coin
+                // Create a simple coin object
+                const coinSize = 0.7;
+                const coinGeometry = new THREE.CircleGeometry(coinSize/2, 16);
+                const coinMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFFD700, // Gold color
+                    side: THREE.DoubleSide
+                });
+                
+                const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+                coin.position.set(segmentX, scaledHeight, 0);
+                
+                // Add some glow effect
+                const coinGlowGeometry = new THREE.CircleGeometry(coinSize/2 * 1.3, 16);
+                const coinGlowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFFD700,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide
+                });
+                
+                const coinGlow = new THREE.Mesh(coinGlowGeometry, coinGlowMaterial);
+                coinGlow.position.z = -0.01;
+                
+                const coinGroup = new THREE.Group();
+                coinGroup.add(coin);
+                coinGroup.add(coinGlow);
+                
+                // Add rotation animation
+                const animate = () => {
+                    if (coinGroup.parent) {
+                        coinGroup.rotation.z += 0.02;
+                        requestAnimationFrame(animate);
+                    }
+                };
+                animate();
+                
+                this.level.scene.add(coinGroup);
+                
+                // Add coin to collectibles
+                if (!this.level.collectibles) {
+                    this.level.collectibles = [];
+                }
+                
+                this.level.collectibles.push({
+                    mesh: coinGroup,
+                    x: segmentX,
+                    y: scaledHeight,
+                    width: coinSize,
+                    height: coinSize,
+                    type: 'coin',
+                    value: 100,
+                    collected: false
+                });
+                
+                this.level.currentLevelPosition += segmentWidth / 3;
+                break;
+                
             case 'portal':
                 // End portal
                 const portal = this.level.levelBuilder.createPortal(
@@ -254,8 +365,69 @@ export class LevelDesigner {
                 this.level.currentLevelPosition += segmentWidth;
                 break;
                 
+            case 'key':
+                // Key collectible (required to unlock the portal)
+                const keySize = 1;
+                const keyGeometry = new THREE.PlaneGeometry(keySize, keySize * 1.5);
+                const keyMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFFFF00, // Yellow
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const key = new THREE.Mesh(keyGeometry, keyMaterial);
+                key.position.set(segmentX, scaledHeight, 0);
+                
+                // Add glow effect
+                const keyGlowGeometry = new THREE.PlaneGeometry(keySize * 1.5, keySize * 2);
+                const keyGlowMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFFFF00,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                const keyGlow = new THREE.Mesh(keyGlowGeometry, keyGlowMaterial);
+                keyGlow.position.z = -0.01;
+                
+                const keyGroup = new THREE.Group();
+                keyGroup.add(key);
+                keyGroup.add(keyGlow);
+                
+                // Add floating animation
+                let floatDirection = 1;
+                const animateKey = () => {
+                    if (keyGroup.parent) {
+                        keyGroup.position.y += 0.01 * floatDirection;
+                        if (keyGroup.position.y > scaledHeight + 0.3) floatDirection = -1;
+                        if (keyGroup.position.y < scaledHeight - 0.3) floatDirection = 1;
+                        requestAnimationFrame(animateKey);
+                    }
+                };
+                animateKey();
+                
+                this.level.scene.add(keyGroup);
+                
+                // Add key to collectibles
+                if (!this.level.collectibles) {
+                    this.level.collectibles = [];
+                }
+                
+                this.level.collectibles.push({
+                    mesh: keyGroup,
+                    x: segmentX,
+                    y: scaledHeight,
+                    width: keySize,
+                    height: keySize * 1.5,
+                    type: 'key',
+                    value: 0, // Keys don't give score, but unlock the portal
+                    collected: false
+                });
+                
+                this.level.currentLevelPosition += segmentWidth / 2;
+                break;
+                
             case 'saw':
-                // Saw blade
+                // Saw blade obstacle
                 if (this.level.levelBuilder.createSawBlade) {
                     const saw = this.level.levelBuilder.createSawBlade(
                         segmentX,
@@ -267,21 +439,26 @@ export class LevelDesigner {
                 this.level.currentLevelPosition += segmentWidth / 3;
                 break;
                 
-            case 'decoration':
-                // Decorative element
-                const size = Math.random() * 1.5 + 0.5;
-                const decorGeometry = new THREE.PlaneGeometry(size, size);
-                const decorMaterial = new THREE.MeshBasicMaterial({
-                    color: this.level.colors.accent,
-                    transparent: true,
-                    opacity: 0.5
-                });
+            case 'start':
+                // Player start position
+                this.level.startPosition = {
+                    x: segmentX,
+                    y: scaledHeight + 1 // Place player above this position
+                };
+                this.level.currentLevelPosition += segmentWidth;
+                break;
                 
-                const decoration = new THREE.Mesh(decorGeometry, decorMaterial);
-                decoration.position.set(segmentX, scaledHeight, -1);
-                this.level.scene.add(decoration);
-                this.level.decorations.push(decoration);
-                this.level.currentLevelPosition += segmentWidth / 4;
+            case 'end':
+                // End position (creates a portal)
+                const endPortal = this.level.levelBuilder.createPortal(
+                    segmentX,
+                    scaledHeight,
+                    4 // Portal size
+                );
+                this.level.portals.push(endPortal);
+                this.level.portalExists = true;
+                this.level.portalObject = endPortal.mesh;
+                this.level.currentLevelPosition += segmentWidth;
                 break;
                 
             default:

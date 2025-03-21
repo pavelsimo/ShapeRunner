@@ -139,49 +139,819 @@
             display: none;
         }
     </style>
-    <script>
-        // Error handling to diagnose issues
-        window.addEventListener('error', function(event) {
-            const debugConsole = document.getElementById('debug-console') || createDebugConsole();
-            debugConsole.style.display = 'block';
-            
-            const errorMsg = document.createElement('div');
-            errorMsg.textContent = `ERROR: ${event.message} at ${event.filename}:${event.lineno}`;
-            errorMsg.style.color = '#FF5555';
-            errorMsg.style.margin = '2px 0';
-            debugConsole.appendChild(errorMsg);
-            
-            // Auto-scroll to bottom
-            debugConsole.scrollTop = debugConsole.scrollHeight;
-            
-            console.error(event);
-            
-            // Prevent the browser from showing its own error dialog
-            event.preventDefault();
-        });
-        
-        function createDebugConsole() {
-            const debugConsole = document.createElement('div');
-            debugConsole.id = 'debug-console';
-            document.body.appendChild(debugConsole);
-            return debugConsole;
-        }
-    </script>
 </head>
 <body>
     <div id="ui">
-        <div id="pause-btn">
-            <div></div>
-            <div></div>
-        </div>
+        <div id="score-display">SCORE: 0</div>
     </div>
-    <div id="game-over">
-        <h2>Game Over</h2>
-        <div id="final-score"></div>
-        <button id="retry-btn">Retry</button>
-    </div>
-    <div id="debug-console"></div>
     
-    <script src="src/js/main.js" type="module"></script>
+    <div id="pause-btn">
+        <div></div>
+        <div></div>
+    </div>
+    
+    <div id="game-over">
+        <h2>GAME OVER</h2>
+        <div id="final-score">SCORE: 0</div>
+        <button id="retry-btn">RETRY</button>
+    </div>
+
+    <div id="debug-console"></div>
+
+    <!-- Load THREE.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // Debug logging
+        const debug = document.getElementById('debug-console');
+        debug.style.display = 'block'; // Always show initially
+        
+        function logDebug(message) {
+            if (debug) {
+                debug.innerHTML += `<div>${message}</div>`;
+                debug.scrollTop = debug.scrollHeight;
+            }
+            console.log(message);
+        }
+
+        // Check if THREE is loaded
+        if (typeof THREE === 'undefined') {
+            logDebug("ERROR: THREE.js not loaded! Trying alternative CDN...");
+            // Create a script element for the alternative CDN
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/three@0.128.0/build/three.min.js";
+            script.onload = function() {
+                logDebug("THREE.js loaded from alternative CDN");
+                initGame();
+            };
+            script.onerror = function() {
+                logDebug("CRITICAL ERROR: Could not load THREE.js from alternative source");
+            };
+            document.head.appendChild(script);
+        } else {
+            logDebug("THREE.js loaded successfully");
+            initGame();
+        }
+
+        // Global error handling
+        window.onerror = function(message, source, lineno, colno, error) {
+            logDebug(`ERROR: ${message} at line ${lineno}:${colno}`);
+        };
+
+        // Wrap the game initialization in a function
+        function initGame() {
+            logDebug("Initializing ShapeRunner...");
+            
+            // Level data (embedded instead of loading from JSON files)
+            const levelTitles = {
+                start: {
+                    title: "Starting Line",
+                    description: "The player starts here on every level",
+                    width: 10,
+                    height: 8,
+                    layout: [
+                        "...........",
+                        "...........",
+                        "...........",
+                        "...........",
+                        "...........",
+                        "....S......",
+                        "BBBB.......",
+                        "..........."
+                    ]
+                },
+                end: {
+                    title: "Finish Line",
+                    description: "The end of every level with the exit portal",
+                    width: 10,
+                    height: 8,
+                    layout: [
+                        "...........",
+                        "...........",
+                        "......E....",
+                        ".....BBB...",
+                        "...........",
+                        "...........",
+                        "BBBBBBBBBB.",
+                        "..........."
+                    ]
+                },
+                title1: {
+                    title: "Simple Platforms",
+                    description: "Basic platform layout with some spikes",
+                    width: 20,
+                    height: 8,
+                    layout: [
+                        ".....................",
+                        ".....................",
+                        "........C............",
+                        "......BBBB...........",
+                        "..BBB................",
+                        ".....................",
+                        "B.........BBB........",
+                        "...^...^.....^...^..."
+                    ]
+                },
+                title2: {
+                    title: "Jump and Slide",
+                    description: "Jumps and slopes challenge",
+                    width: 20,
+                    height: 8,
+                    layout: [
+                        ".....................",
+                        "............C........",
+                        "..........BBBB.......",
+                        "........./........C..",
+                        "......../............",
+                        "...J.../....C........",
+                        "...B../...BBB........",
+                        "^..../..^....^......."
+                    ]
+                },
+                title3: {
+                    title: "Dangerous Path",
+                    description: "Navigate through spinning blades to find the key",
+                    width: 20,
+                    height: 8,
+                    layout: [
+                        ".....................",
+                        "............K........",
+                        "...........BBBB......",
+                        ".....................",
+                        ".....O...O...........",
+                        "..BBB....BBB.........",
+                        ".....................",
+                        "^.^.^.^............^."
+                    ]
+                },
+                title4: {
+                    title: "Spike Gauntlet",
+                    description: "Navigate through a dangerous spike field",
+                    width: 20,
+                    height: 8,
+                    layout: [
+                        ".....................",
+                        "..........C..........",
+                        "BBBB..........BBB....",
+                        "....B........B.......",
+                        "....B..^..^..B..C....",
+                        "....BBBBBBBBB........",
+                        "............J........",
+                        "^.^.^.^.^.^.^B.^.^.^."
+                    ]
+                },
+                title5: {
+                    title: "Portal Finale",
+                    description: "Final section with a portal to the next level",
+                    width: 20,
+                    height: 8,
+                    layout: [
+                        ".....................",
+                        "..................P..",
+                        "...................B.",
+                        "..........C..........",
+                        "........BBBB.........",
+                        ".....J................",
+                        "...BBB................",
+                        "^.^.^.^.^............"
+                    ]
+                }
+            };
+
+            // LevelManager class
+            class LevelManager {
+                constructor() {
+                    this.levelTitles = levelTitles;
+                    this.currentLevel = 1;
+                    this.portalPlaced = false;
+                    this.startPlaced = false;
+                }
+                
+                // Initialize the level manager
+                async initialize() {
+                    logDebug("Level manager initialized");
+                    return true;
+                }
+                
+                // Generate a complete level by combining multiple level titles
+                generateLevel(levelNumber, difficulty = 1) {
+                    try {
+                        this.currentLevel = levelNumber;
+                        this.portalPlaced = false;
+                        this.startPlaced = false;
+                        
+                        logDebug(`Generating level ${levelNumber} with difficulty ${difficulty}`);
+                        
+                        // Always start with the 'start' title
+                        const startTitle = this.levelTitles['start'];
+                        
+                        // Always end with the 'end' title
+                        const endTitle = this.levelTitles['end'];
+                        
+                        // Get available middle titles (excluding start and end)
+                        const availableTitles = Object.keys(this.levelTitles)
+                            .filter(id => id !== 'start' && id !== 'end')
+                            .map(id => this.levelTitles[id]);
+                        
+                        // Determine how many middle sections to include based on difficulty
+                        // Higher difficulty = more sections
+                        const sectionCount = 2 + Math.min(Math.floor(difficulty * 0.8), 4);
+                        
+                        // Randomly select middle titles
+                        const selectedTitles = [];
+                        for (let i = 0; i < sectionCount; i++) {
+                            const randomIndex = Math.floor(Math.random() * availableTitles.length);
+                            selectedTitles.push(availableTitles[randomIndex]);
+                        }
+                        
+                        // Build the complete level by combining titles horizontally
+                        // Each level title is a 2D array of ASCII characters
+                        
+                        // Start with a base set of empty rows
+                        const maxHeight = Math.max(
+                            startTitle.height,
+                            endTitle.height,
+                            ...selectedTitles.map(title => title.height)
+                        );
+                        
+                        // Initialize the combined level with empty rows
+                        const combinedLevel = [];
+                        for (let i = 0; i < maxHeight; i++) {
+                            combinedLevel.push([]);
+                        }
+                        
+                        // Function to append a title's layout to the combined level
+                        const appendTitle = (title) => {
+                            const layout = title.layout;
+                            
+                            // For each row in the title's layout
+                            for (let rowIndex = 0; rowIndex < layout.length; rowIndex++) {
+                                // Get the row string and convert to array of characters
+                                const rowChars = layout[rowIndex].split('');
+                                
+                                // Append these characters to the corresponding row in the combined level
+                                const combinedRowIndex = maxHeight - layout.length + rowIndex;
+                                if (combinedRowIndex >= 0) {
+                                    combinedLevel[combinedRowIndex] = combinedLevel[combinedRowIndex].concat(rowChars);
+                                }
+                            }
+                        };
+                        
+                        // Append titles in order: start, middle sections, end
+                        appendTitle(startTitle);
+                        selectedTitles.forEach(title => appendTitle(title));
+                        appendTitle(endTitle);
+                        
+                        // Convert the 2D array back to a string format
+                        const levelString = combinedLevel.map(row => row.join('')).join('\n');
+                        
+                        logDebug("Level generation complete");
+                        return levelString;
+                    } catch (error) {
+                        logDebug("Error generating level: " + error.message);
+                        // Return a simple fallback level if generation fails
+                        return "...........\n...........\n...........\n...........\n....S......\n...........\nBBBBBBBBBBB\n...........";
+                    }
+                }
+            }
+
+            // Main game class
+            class Game {
+                constructor() {
+                    logDebug("Initializing game...");
+                    
+                    // UI elements
+                    this.scoreDisplay = document.getElementById('score-display');
+                    this.pauseBtn = document.getElementById('pause-btn');
+                    this.gameOverUI = document.getElementById('game-over');
+                    this.finalScore = document.getElementById('final-score');
+                    this.retryBtn = document.getElementById('retry-btn');
+                    
+                    // Event listeners
+                    this.pauseBtn.addEventListener('click', () => this.togglePause());
+                    this.retryBtn.addEventListener('click', () => this.restart());
+                    window.addEventListener('keydown', this.handleKeyDown.bind(this));
+                    window.addEventListener('resize', this.handleResize.bind(this));
+                    
+                    // Game properties
+                    this.isRunning = false;
+                    this.isPaused = false;
+                    this.score = 0;
+                    this.playerSize = 1;
+                    this.speed = 10;
+                    this.jumpForce = 15;
+                    this.gravity = 25;
+                    this.groundY = -8;
+                    
+                    // Colors
+                    this.colors = {
+                        background: 0x000033,
+                        player: 0x00FFFF,
+                        platform: 0x0066FF,
+                        obstacle: 0xFF00FF,
+                        collectible: 0xFFFF00
+                    };
+                    
+                    // Level manager
+                    this.levelManager = new LevelManager();
+                    
+                    // Initialize the game
+                    this.init();
+                }
+                
+                async init() {
+                    try {
+                        // Initialize level manager
+                        await this.levelManager.initialize();
+                        
+                        // Create renderer
+                        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                        this.renderer.setSize(window.innerWidth, window.innerHeight);
+                        document.body.appendChild(this.renderer.domElement);
+                        
+                        // Create scene
+                        this.scene = new THREE.Scene();
+                        this.scene.background = new THREE.Color(this.colors.background);
+                        
+                        // Create camera
+                        const aspectRatio = window.innerWidth / window.innerHeight;
+                        const cameraHeight = 20;
+                        const cameraWidth = cameraHeight * aspectRatio;
+                        this.camera = new THREE.OrthographicCamera(
+                            -cameraWidth / 2, cameraWidth / 2,
+                            cameraHeight / 2, -cameraHeight / 2,
+                            0.1, 1000
+                        );
+                        this.camera.position.z = 10;
+                        
+                        // Add light
+                        const light = new THREE.AmbientLight(0xFFFFFF, 1);
+                        this.scene.add(light);
+                        
+                        // Create player
+                        this.createPlayer();
+                        
+                        // Create level
+                        this.createLevel();
+                        
+                        // Start animation loop
+                        this.isRunning = true;
+                        this.lastTime = performance.now();
+                        this.animate();
+                        
+                        logDebug("Game initialized successfully");
+                    } catch (error) {
+                        logDebug("Error initializing game: " + error.message);
+                    }
+                }
+                
+                createPlayer() {
+                    // Player geometry
+                    this.playerGeometry = new THREE.BoxGeometry(this.playerSize, this.playerSize, this.playerSize);
+                    this.playerMaterial = new THREE.MeshBasicMaterial({ color: this.colors.player });
+                    
+                    // Create player mesh
+                    this.player = new THREE.Mesh(this.playerGeometry, this.playerMaterial);
+                    this.player.position.set(-5, this.groundY + this.playerSize/2 + 0.5, 0); // Position player ABOVE the ground
+                    this.scene.add(this.player);
+                    
+                    // Player physics
+                    this.playerVelocity = { x: 5, y: 0 }; // Set x velocity to 5 to move forward
+                    this.isJumping = false;
+                    this.onGround = false;
+                    
+                    logDebug("Player created with forward velocity: " + this.playerVelocity.x);
+                }
+                
+                createLevel() {
+                    logDebug("Creating level...");
+                    
+                    // Clear existing level objects
+                    if (this.platforms) {
+                        this.platforms.forEach(platform => this.scene.remove(platform));
+                    }
+                    if (this.obstacles) {
+                        this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
+                    }
+                    if (this.collectibles) {
+                        this.collectibles.forEach(coin => this.scene.remove(coin));
+                    }
+                    
+                    // Initialize collections
+                    this.platforms = [];
+                    this.obstacles = [];
+                    this.collectibles = [];
+                    this.portalObject = null;
+                    
+                    // Create ground
+                    const groundGeometry = new THREE.BoxGeometry(100, 1, 1);
+                    const groundMaterial = new THREE.MeshBasicMaterial({ color: this.colors.platform });
+                    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                    this.ground.position.set(0, this.groundY, 0);
+                    this.scene.add(this.ground);
+                    this.platforms.push(this.ground);
+                    
+                    // Generate level from level manager
+                    const levelData = this.levelManager.generateLevel(1, 2);
+                    this.parseLevel(levelData);
+                    
+                    logDebug("Level created");
+                }
+                
+                parseLevel(levelData) {
+                    const rows = levelData.split("\n");
+                    
+                    // Position tracking
+                    let xPos = -40; // Start position
+                    const tileSize = 2; // Size of each tile
+                    
+                    // Parse each character in the level data
+                    for (let col = 0; col < rows[0].length; col++) {
+                        for (let row = 0; row < rows.length; row++) {
+                            // Invert row to make bottom row the ground level
+                            const invertedRow = rows.length - 1 - row;
+                            
+                            // Get the character at this position
+                            const char = rows[invertedRow][col];
+                            
+                            // Calculate y position - ensure everything starts from the ground level up
+                            const yPos = this.groundY + 0.5 + row * tileSize;
+                            
+                            // Process based on character type
+                            this.createTile(char, xPos, yPos);
+                        }
+                        
+                        // Move to the next column
+                        xPos += tileSize;
+                    }
+                }
+                
+                createTile(type, x, y) {
+                    switch (type) {
+                        case 'B': // Block/Platform
+                            const platformGeometry = new THREE.BoxGeometry(2, 1, 1);
+                            const platformMaterial = new THREE.MeshBasicMaterial({ color: this.colors.platform });
+                            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+                            platform.position.set(x, y, 0);
+                            platform.userData.type = 'platform';
+                            platform.userData.width = 2;
+                            platform.userData.height = 1;
+                            this.scene.add(platform);
+                            this.platforms.push(platform);
+                            break;
+                            
+                        case '^': // Spike
+                            const spikeGeometry = new THREE.ConeGeometry(0.5, 1, 4);
+                            const spikeMaterial = new THREE.MeshBasicMaterial({ color: this.colors.obstacle });
+                            const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                            
+                            // Ensure spike is above the ground, not inside it
+                            if (y <= this.groundY + 0.5) {
+                                y = this.groundY + 0.5; // Place the spike on top of the ground
+                            }
+                            
+                            spike.position.set(x, y, 0);
+                            spike.userData.type = 'obstacle';
+                            spike.userData.width = 1;
+                            spike.userData.height = 1;
+                            this.scene.add(spike);
+                            this.obstacles.push(spike);
+                            break;
+                            
+                        case 'C': // Coin
+                            const coinGeometry = new THREE.CircleGeometry(0.5, 16);
+                            const coinMaterial = new THREE.MeshBasicMaterial({ color: 0xFFD700 });
+                            const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+                            coin.position.set(x, y, 0);
+                            coin.userData.type = 'coin';
+                            coin.userData.width = 1;
+                            coin.userData.height = 1;
+                            coin.userData.collected = false;
+                            this.scene.add(coin);
+                            this.collectibles.push(coin);
+                            break;
+                            
+                        case 'J': // Jump pad
+                            const jumpPadGeometry = new THREE.BoxGeometry(1.5, 0.5, 1);
+                            const jumpPadMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+                            const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
+                            jumpPad.position.set(x, y, 0);
+                            jumpPad.userData.type = 'jumpPad';
+                            jumpPad.userData.width = 1.5;
+                            jumpPad.userData.height = 0.5;
+                            this.scene.add(jumpPad);
+                            this.platforms.push(jumpPad);
+                            break;
+                            
+                        case 'P': // Portal
+                            const portalGeometry = new THREE.RingGeometry(0.7, 1, 16);
+                            const portalMaterial = new THREE.MeshBasicMaterial({ 
+                                color: 0xFF00FF,
+                                side: THREE.DoubleSide
+                            });
+                            const portal = new THREE.Mesh(portalGeometry, portalMaterial);
+                            portal.position.set(x, y, 0);
+                            portal.userData.type = 'portal';
+                            portal.userData.width = 2;
+                            portal.userData.height = 2;
+                            this.scene.add(portal);
+                            this.portalObject = portal;
+                            break;
+                            
+                        case 'S': // Start position
+                            // Move player to start position
+                            if (this.player) {
+                                // Position player above the ground/marker with proper offset
+                                this.player.position.set(x, y + this.playerSize/2 + 0.1, 0);
+                            }
+                            break;
+                    }
+                }
+                
+                handleKeyDown(event) {
+                    if ((event.code === 'Space' || event.code === 'ArrowUp') && !this.isJumping && (this.onGround || this.onPlatform)) {
+                        this.playerVelocity.y = this.jumpForce;
+                        this.isJumping = true;
+                        this.onGround = false;
+                        this.onPlatform = false;
+                    }
+                    
+                    // Increase speed when right arrow is pressed
+                    if (event.code === 'ArrowRight') {
+                        this.playerVelocity.x = 10; // Double speed temporarily
+                        setTimeout(() => {
+                            if (this.isRunning) this.playerVelocity.x = 5; // Return to normal speed after 0.5 seconds
+                        }, 500);
+                    }
+                    
+                    if (event.code === 'KeyP' || event.code === 'Escape') {
+                        this.togglePause();
+                    }
+                }
+                
+                handleResize() {
+                    const width = window.innerWidth;
+                    const height = window.innerHeight;
+                    
+                    this.renderer.setSize(width, height);
+                    
+                    const aspectRatio = width / height;
+                    const cameraHeight = 20;
+                    const cameraWidth = cameraHeight * aspectRatio;
+                    
+                    this.camera.left = -cameraWidth / 2;
+                    this.camera.right = cameraWidth / 2;
+                    this.camera.top = cameraHeight / 2;
+                    this.camera.bottom = -cameraHeight / 2;
+                    this.camera.updateProjectionMatrix();
+                }
+                
+                togglePause() {
+                    this.isPaused = !this.isPaused;
+                    logDebug("Game " + (this.isPaused ? "paused" : "resumed"));
+                }
+                
+                restart() {
+                    logDebug("Restarting game");
+                    this.score = 0;
+                    this.gameOverUI.style.display = 'none';
+                    this.isRunning = true;
+                    this.isPaused = false;
+                    
+                    // Reset player
+                    this.player.position.set(-5, this.groundY + this.playerSize/2 + 0.5, 0);
+                    this.playerVelocity.x = 5;
+                    this.playerVelocity.y = 0;
+                    this.isJumping = false;
+                    
+                    // Recreate level
+                    this.createLevel();
+                    
+                    // Update UI
+                    this.updateScoreDisplay();
+                }
+                
+                animate() {
+                    requestAnimationFrame(this.animate.bind(this));
+                    
+                    if (!this.isRunning || this.isPaused) return;
+                    
+                    // Calculate delta time for smooth animation
+                    const now = performance.now();
+                    const deltaTime = (now - this.lastTime) / 1000; // in seconds
+                    this.lastTime = now;
+                    
+                    // Limit delta time to avoid large jumps
+                    const limitedDelta = Math.min(deltaTime, 0.1);
+                    
+                    // Update game state
+                    this.update(limitedDelta);
+                    
+                    // Render scene
+                    this.renderer.render(this.scene, this.camera);
+                }
+                
+                update(deltaTime) {
+                    // Apply gravity to player
+                    this.playerVelocity.y -= this.gravity * deltaTime;
+                    
+                    // Limit vertical velocity
+                    this.playerVelocity.y = Math.max(this.playerVelocity.y, -30);
+                    
+                    // Ensure player is always moving forward
+                    if (this.playerVelocity.x < 5) {
+                        this.playerVelocity.x = 5;
+                        logDebug("Restoring forward velocity");
+                    }
+                    
+                    // Update player position
+                    this.player.position.x += this.playerVelocity.x * deltaTime;
+                    this.player.position.y += this.playerVelocity.y * deltaTime;
+                    
+                    // Ground collision
+                    if (this.player.position.y - this.playerSize/2 < this.groundY + 0.5) { // Add a small offset to ensure player is on top
+                        this.player.position.y = this.groundY + this.playerSize/2 + 0.5;
+                        this.playerVelocity.y = 0;
+                        this.isJumping = false;
+                        this.onGround = true;
+                    } else {
+                        this.onGround = false;
+                    }
+                    
+                    // Check collisions
+                    this.checkCollisions();
+                    
+                    // Camera follows player
+                    this.camera.position.x = this.player.position.x;
+                    
+                    // Update UI
+                    this.score += deltaTime * 10;
+                    this.updateScoreDisplay();
+                    
+                    // Rotate player when jumping
+                    if (this.isJumping) {
+                        this.player.rotation.z -= 3 * deltaTime;
+                    } else {
+                        this.player.rotation.z = 0;
+                    }
+                }
+                
+                checkCollisions() {
+                    // Platform collisions
+                    this.onPlatform = false;
+                    
+                    this.platforms.forEach(platform => {
+                        if (platform === this.ground) return; // Skip ground platform
+                        
+                        const playerBottom = this.player.position.y - this.playerSize/2;
+                        const playerTop = this.player.position.y + this.playerSize/2;
+                        const playerLeft = this.player.position.x - this.playerSize/2;
+                        const playerRight = this.player.position.x + this.playerSize/2;
+                        
+                        const platformWidth = platform.userData.width;
+                        const platformHeight = platform.userData.height;
+                        const platformTop = platform.position.y + platformHeight/2;
+                        const platformBottom = platform.position.y - platformHeight/2;
+                        const platformLeft = platform.position.x - platformWidth/2;
+                        const platformRight = platform.position.x + platformWidth/2;
+                        
+                        // Check for collision
+                        if (playerRight > platformLeft && playerLeft < platformRight &&
+                            playerBottom < platformTop && playerTop > platformBottom) {
+                            
+                            // Coming from above (landing on platform)
+                            if (this.playerVelocity.y < 0 && 
+                                playerBottom - this.playerVelocity.y > platformTop - 0.1) { // Add small tolerance
+                                
+                                // Land on platform
+                                this.player.position.y = platformTop + this.playerSize/2 + 0.01; // Small offset to prevent sticking
+                                this.playerVelocity.y = 0;
+                                this.isJumping = false;
+                                this.onPlatform = true;
+                                
+                                // Check if it's a jump pad
+                                if (platform.userData.type === 'jumpPad') {
+                                    this.playerVelocity.y = this.jumpForce * 1.5;
+                                    this.isJumping = true;
+                                    this.onPlatform = false;
+                                }
+                            }
+                            // Hit ceiling
+                            else if (this.playerVelocity.y > 0 && 
+                                    playerTop - this.playerVelocity.y < platformBottom + 0.1) { // Add small tolerance
+                                this.player.position.y = platformBottom - this.playerSize/2 - 0.01; // Small offset
+                                this.playerVelocity.y = 0;
+                            }
+                        }
+                    });
+                    
+                    // Obstacle collisions
+                    this.obstacles.forEach(obstacle => {
+                        const playerLeft = this.player.position.x - this.playerSize/2;
+                        const playerRight = this.player.position.x + this.playerSize/2;
+                        const playerBottom = this.player.position.y - this.playerSize/2;
+                        const playerTop = this.player.position.y + this.playerSize/2;
+                        
+                        const obstacleWidth = obstacle.userData.width;
+                        const obstacleHeight = obstacle.userData.height;
+                        const obstacleLeft = obstacle.position.x - obstacleWidth/2;
+                        const obstacleRight = obstacle.position.x + obstacleWidth/2;
+                        const obstacleBottom = obstacle.position.y - obstacleHeight/2;
+                        const obstacleTop = obstacle.position.y + obstacleHeight/2;
+                        
+                        // Ensure the obstacle is not below ground or hidden within ground
+                        if (obstacleTop <= this.groundY + 0.5) {
+                            return; // Skip obstacles that are hidden in the ground
+                        }
+                        
+                        // Check for collision with reduced hitbox for better gameplay feel
+                        if (playerRight > obstacleLeft + 0.2 && 
+                            playerLeft < obstacleRight - 0.2 &&
+                            playerBottom < obstacleTop - 0.2 && 
+                            playerTop > obstacleBottom + 0.2) {
+                            this.gameOver();
+                        }
+                    });
+                    
+                    // Collectible collisions
+                    for (let i = this.collectibles.length - 1; i >= 0; i--) {
+                        const coin = this.collectibles[i];
+                        if (coin.userData.collected) continue;
+                        
+                        const playerLeft = this.player.position.x - this.playerSize/2;
+                        const playerRight = this.player.position.x + this.playerSize/2;
+                        const playerBottom = this.player.position.y - this.playerSize/2;
+                        const playerTop = this.player.position.y + this.playerSize/2;
+                        
+                        const coinWidth = coin.userData.width;
+                        const coinHeight = coin.userData.height;
+                        const coinLeft = coin.position.x - coinWidth/2;
+                        const coinRight = coin.position.x + coinWidth/2;
+                        const coinBottom = coin.position.y - coinHeight/2;
+                        const coinTop = coin.position.y + coinHeight/2;
+                        
+                        // Check for collision
+                        if (playerRight > coinLeft && playerLeft < coinRight &&
+                            playerBottom < coinTop && playerTop > coinBottom) {
+                            // Collect coin
+                            coin.userData.collected = true;
+                            this.scene.remove(coin);
+                            
+                            // Add to score
+                            this.score += 100;
+                            this.updateScoreDisplay();
+                        }
+                    }
+                    
+                    // Portal collision
+                    if (this.portalObject) {
+                        const playerX = this.player.position.x;
+                        const playerY = this.player.position.y;
+                        const portalX = this.portalObject.position.x;
+                        const portalY = this.portalObject.position.y;
+                        
+                        // Simple distance check
+                        const dx = playerX - portalX;
+                        const dy = playerY - portalY;
+                        const distance = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if (distance < 2) {
+                            // Next level
+                            logDebug("Portal reached - level complete!");
+                            this.createLevel(); // Just reload the level for now
+                        }
+                    }
+                }
+                
+                updateScoreDisplay() {
+                    this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
+                }
+                
+                gameOver() {
+                    logDebug("Game over");
+                    this.isRunning = false;
+                    this.finalScore.textContent = `SCORE: ${Math.floor(this.score)}`;
+                    this.gameOverUI.style.display = 'block';
+                }
+            }
+
+            // Initialize the game
+            const game = new Game();
+            
+            // Keep debug console visible longer
+            setTimeout(() => {
+                const debugConsole = document.getElementById('debug-console');
+                if (debugConsole) {
+                    debugConsole.style.display = 'none';
+                }
+            }, 10000); // Show for 10 seconds instead of 3
+            
+            // Add keyboard control instructions
+            logDebug("CONTROLS: Press SPACE or UP ARROW to jump");
+            logDebug("Press RIGHT ARROW for temporary speed boost");
+            logDebug("Game automatically moves forward");
+            logDebug("Avoid spikes and collect coins!");
+        }
+    </script>
 </body>
 </html> 

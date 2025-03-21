@@ -4,13 +4,14 @@ import { Level } from './level.js';
 import { LevelBuilder } from './levelBuilder.js';
 import { CollisionDetector } from './collisionDetector.js';
 import { GameUI } from './ui.js';
+import { LevelManager } from './levelManager.js';
 
 export class Game {
     constructor() {
         this.isRunning = false;
         this.isPaused = false;
         this.isGameOver = false;
-        this.gameSpeed = 7;
+        this.gameSpeed = 10;
         this.distance = 0;
         this.currentLevel = 1;
         this.colorSchemes = {
@@ -50,8 +51,11 @@ export class Game {
                 accent: 0x00ffaa
             }
         };
-        this.availableColorSchemes = ['purple', 'blue', 'green', 'red', 'cyan'];
-        this.currentColorScheme = 'purple'; // Start with purple theme like in the screenshots
+        this.availableColorSchemes = Object.keys(this.colorSchemes);
+        this.currentColorScheme = 'blue';
+        
+        // Create level manager
+        this.levelManager = new LevelManager();
         
         // Set up event listeners
         window.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -67,55 +71,77 @@ export class Game {
         this.retryBtn.addEventListener('click', this.restart.bind(this));
         
         this.ui = new GameUI(this);
+        
+        // Initialize the game
+        this.initialize();
+        
+        // Start the game loop
+        this.startGameLoop();
     }
 
-    initialize() {
-        // Create the renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(this.renderer.domElement);
-
-        // Create the scene
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(this.colorSchemes[this.currentColorScheme].background);
-
-        // Create an orthographic camera for 2D view
-        const aspectRatio = window.innerWidth / window.innerHeight;
-        const cameraHeight = 20;
-        const cameraWidth = cameraHeight * aspectRatio;
-        this.camera = new THREE.OrthographicCamera(
-            -cameraWidth / 2, cameraWidth / 2,
-            cameraHeight / 2, -cameraHeight / 2,
-            0.1, 1000
-        );
-        this.camera.position.z = 10;
-
-        // Create level builder
-        this.levelBuilder = new LevelBuilder(this.scene, this.colorSchemes[this.currentColorScheme]);
-        
-        // Create the ground level
-        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme]);
-        
-        // Load a tile-based level design
-        this.loadTileBasedLevel();
-        
-        // Create the player
-        this.player = new Player(this.scene, this.colorSchemes[this.currentColorScheme]);
-        this.player.create();
-        
-        // Create collision detector
-        this.collisionDetector = new CollisionDetector(this.player, this.level);
-        
-        // Add some ambient light
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        this.scene.add(ambientLight);
-        
-        // Initialize game state
-        this.isRunning = true;
-        this.lastFrameTime = performance.now();
-        
-        // Update the UI elements with the current color scheme
-        this.updateUIColors();
+    async initialize() {
+        try {
+            // First initialize the level manager
+            await this.levelManager.initialize();
+            
+            // Create the renderer
+            this.renderer = new THREE.WebGLRenderer({ antialias: true });
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(this.renderer.domElement);
+            
+            // Create the scene
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(this.colorSchemes[this.currentColorScheme].background);
+            
+            // Create an orthographic camera for 2D view
+            const aspectRatio = window.innerWidth / window.innerHeight;
+            const cameraHeight = 20;
+            const cameraWidth = cameraHeight * aspectRatio;
+            this.camera = new THREE.OrthographicCamera(
+                -cameraWidth / 2, cameraWidth / 2,
+                cameraHeight / 2, -cameraHeight / 2,
+                0.1, 1000
+            );
+            this.camera.position.z = 10;
+            
+            // Create level builder
+            this.levelBuilder = new LevelBuilder(this.scene, this.colorSchemes[this.currentColorScheme]);
+            
+            // Create the ground level - pass the game reference
+            this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
+            
+            // Load a tile-based level design
+            this.loadTileBasedLevel();
+            
+            // Create the player
+            this.player = new Player(this.scene, this.colorSchemes[this.currentColorScheme]);
+            this.player.create();
+            
+            // If there's a start position defined in the level, use that
+            if (this.level.startPosition) {
+                this.player.startX = this.level.startPosition.x;
+                this.player.startY = this.level.startPosition.y;
+                this.player.reset();
+            }
+            
+            // Create collision detector
+            this.collisionDetector = new CollisionDetector(this.player, this.level);
+            
+            // Add some ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            this.scene.add(ambientLight);
+            
+            // Initialize game state
+            this.isRunning = true;
+            this.lastFrameTime = performance.now();
+            
+            // Update the UI elements with the current color scheme
+            this.updateUIColors();
+            
+            console.log("Game initialized successfully");
+        } catch (error) {
+            console.error("Error initializing game:", error);
+        }
     }
 
     startGameLoop() {
@@ -249,7 +275,7 @@ export class Game {
         this.camera.position.y = 0;
         
         // Create a new level with current color scheme
-        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme]);
+        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
         
         // Use random predefined level designs
         this.loadRandomLevelDesign();
@@ -297,19 +323,16 @@ export class Game {
 
     // Load a tile-based level design for the game
     loadTileBasedLevel() {
-        // Use the predefined level designs
-        const levelDesigns = this.getDefaultLevelDesigns();
+        // Get the difficulty based on the current level
+        const difficulty = Math.min(Math.floor(this.currentLevel * 0.5) + 1, 5);
         
-        // Determine which level to load based on the current level number
-        // For level 1, start with the tutorial level
-        if (this.currentLevel === 1) {
-            this.level.createFromASCII(levelDesigns.tutorial);
-        } else {
-            // For other levels, select randomly from the remaining designs
-            const availableLevels = Object.keys(levelDesigns).filter(key => key !== 'tutorial');
-            const selectedKey = availableLevels[Math.floor(Math.random() * availableLevels.length)];
-            this.level.createFromASCII(levelDesigns[selectedKey]);
-        }
+        // Generate a level from our level manager
+        const levelString = this.levelManager.generateLevel(this.currentLevel, difficulty);
+        
+        // Create the level from the generated ASCII
+        this.level.createFromASCII(levelString);
+        
+        console.log(`Loaded tile-based level ${this.currentLevel} with difficulty ${difficulty}`);
     }
 
     onWindowResize() {
@@ -349,8 +372,8 @@ export class Game {
         // Clear existing level
         this.level.clear();
         
-        // Create new level with new color scheme
-        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme]);
+        // Create new level with new color scheme - pass the game reference
+        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
         
         // Load a tile-based level design
         this.loadTileBasedLevel();
@@ -365,7 +388,7 @@ export class Game {
         this.collisionDetector = new CollisionDetector(this.player, this.level);
         
         // Speed up slightly with each level
-        this.gameSpeed = 7 + (this.currentLevel - 1) * 0.5;
+        this.gameSpeed = 10 + (this.currentLevel - 1) * 0.5;
         
         // Update UI colors to match new color scheme
         this.updateUIColors();
@@ -495,7 +518,7 @@ export class Game {
         }
         
         // Create a new level using the ASCII map
-        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentLevel % this.colorSchemes.length]);
+        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentLevel % this.colorSchemes.length], this);
         this.level.createFromASCII(asciiMap);
         
         // Setup collision detection for the new level

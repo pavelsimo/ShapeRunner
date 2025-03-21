@@ -4,10 +4,11 @@ import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/thr
 import { LevelDesigner } from './levelDesigner.js';
 
 export class Level {
-    constructor(scene, levelBuilder, colors) {
+    constructor(scene, levelBuilder, colors, game) {
         this.scene = scene;
         this.levelBuilder = levelBuilder;
         this.colors = colors;
+        this.game = game; // Store reference to the game
         
         // Level properties
         this.levelWidth = 1000;
@@ -21,6 +22,11 @@ export class Level {
         this.obstacles = [];
         this.decorations = [];
         this.portals = [];
+        this.collectibles = []; // Array for collectible items
+        
+        // State tracking
+        this.hasKey = false;
+        this.startPosition = null;
         
         // Track animation frames for cleanup
         this.animationFrames = [];
