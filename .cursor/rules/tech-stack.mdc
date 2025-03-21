@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Technical Stack
+
+- threejs for the frontend
+- do not use javascript libraries like vue.js or react, pure javascript
+
