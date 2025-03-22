@@ -1069,10 +1069,9 @@
                             name => name !== 'start' && name !== 'end'
                         );
                         
-                        // Determine how many sections to include based on level number
-                        // Higher levels get more sections for longer challenge
-                        const baseNumSections = 4; // Minimum number of sections
-                        const additionalSections = Math.min(Math.floor(levelNumber / 2), 3); // Up to 3 more based on level
+                        // Determine how many sections to include - at least 20 tiles total (18 middle + start + end)
+                        const baseNumSections = 18; // Ensure at least 20 tiles total
+                        const additionalSections = Math.min(Math.floor(levelNumber / 2), 5); // Up to 5 more based on level
                         const numSections = baseNumSections + additionalSections;
                         
                         // Randomly select sections for this level
@@ -1106,7 +1105,7 @@
                             
                             // If no jump pad was found, replace one random section with a jump section
                             if (!hasJumpPad) {
-                                const jumpSections = ['jump1', 'jump2', 'jump3'];
+                                const jumpSections = ['jump1', 'jump2', 'jump3', 'jump4', 'jump5'];
                                 const randomJump = jumpSections[Math.floor(Math.random() * jumpSections.length)];
                                 const replaceIndex = Math.floor(Math.random() * selectedSections.length);
                                 selectedSections[replaceIndex] = this.levelTitles[randomJump];
@@ -1128,7 +1127,7 @@
                             
                             // If no special collectible was found, replace one random section
                             if (!hasSpecial) {
-                                const specialSections = ['special1', 'special2'];
+                                const specialSections = ['special1', 'special2', 'special3', 'special4'];
                                 const randomSpecial = specialSections[Math.floor(Math.random() * specialSections.length)];
                                 // Don't replace the first or last section
                                 const replaceIndex = 1 + Math.floor(Math.random() * (selectedSections.length - 2));
@@ -1198,8 +1197,14 @@
                             platform: 0x000033,
                             platformEdge: 0x00FFFF,
                             obstacle: 0x40FFFF,
+                            obstacleEdge: 0x00FFFF,
                             collectible: 0xFFFF00,
-                            portal: 0x00FFFF
+                            portal: 0x00FFFF,
+                            portalEdge: 0x80FFFF,
+                            jumpPad: 0x004466,
+                            jumpPadEdge: 0x00FFFF,
+                            scoreGlow: '#00FFFF',
+                            levelGlow: '#00FFFF'
                         },
                         { // Level 2 - Purple
                             background: 0x110033,
@@ -1208,8 +1213,14 @@
                             platform: 0x220033,
                             platformEdge: 0xFF00FF,
                             obstacle: 0xFF00AA,
+                            obstacleEdge: 0xFF00FF,
                             collectible: 0xFFFF00,
-                            portal: 0xFF00FF
+                            portal: 0xFF00FF,
+                            portalEdge: 0xFF80FF,
+                            jumpPad: 0x440066,
+                            jumpPadEdge: 0xFF00FF,
+                            scoreGlow: '#FF00FF',
+                            levelGlow: '#FF00FF'
                         },
                         { // Level 3 - Green
                             background: 0x002222,
@@ -1218,8 +1229,14 @@
                             platform: 0x003322,
                             platformEdge: 0x00FF88,
                             obstacle: 0x00CC66,
+                            obstacleEdge: 0x00FF88,
                             collectible: 0xFFFF00, 
-                            portal: 0x00FF88
+                            portal: 0x00FF88,
+                            portalEdge: 0x80FFB0,
+                            jumpPad: 0x004433,
+                            jumpPadEdge: 0x00FF88,
+                            scoreGlow: '#00FF88',
+                            levelGlow: '#00FF88'
                         },
                         { // Level 4 - Orange
                             background: 0x221100,
@@ -1228,8 +1245,14 @@
                             platform: 0x331100,
                             platformEdge: 0xFF6600,
                             obstacle: 0xFF8800,
+                            obstacleEdge: 0xFF6600,
                             collectible: 0xFFFF00,
-                            portal: 0xFF6600
+                            portal: 0xFF6600,
+                            portalEdge: 0xFFAA80,
+                            jumpPad: 0x663300,
+                            jumpPadEdge: 0xFF6600,
+                            scoreGlow: '#FF6600',
+                            levelGlow: '#FF6600'
                         },
                         { // Level 5 - Blue
                             background: 0x000033,
@@ -1238,8 +1261,14 @@
                             platform: 0x000044,
                             platformEdge: 0x3399FF,
                             obstacle: 0x0066FF,
+                            obstacleEdge: 0x3399FF,
                             collectible: 0xFFFF00,
-                            portal: 0x3399FF
+                            portal: 0x3399FF,
+                            portalEdge: 0x80C0FF,
+                            jumpPad: 0x001144,
+                            jumpPadEdge: 0x3399FF,
+                            scoreGlow: '#3399FF',
+                            levelGlow: '#3399FF'
                         }
                     ];
                     
@@ -1541,7 +1570,7 @@
                     const points = curve.getPoints(numPoints);
                     
                     // Create a custom geometry for the variable-width path
-                    const pathGeometry = new THREE.BufferGeometry();
+                    const pathGeometry = new THREE.BufferGeometry().setFromPoints(points);
                     const positions = [];
                     const indices = [];
                     
@@ -1602,125 +1631,35 @@
                 }
                 
                 createLevel() {
-                    logDebug("Creating level...");
-                    
                     // Clear existing level objects
-                    if (this.platforms) {
-                        this.platforms.forEach(platform => this.scene.remove(platform));
-                    }
-                    if (this.obstacles) {
-                        this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
-                    }
-                    if (this.collectibles) {
-                        this.collectibles.forEach(coin => this.scene.remove(coin));
-                    }
-                    if (this.portal) {
-                        this.scene.remove(this.portal);
-                        this.portal = null;
-                    }
+                    this.clearLevel();
                     
                     // Reset collections
                     this.platforms = [];
                     this.obstacles = [];
                     this.collectibles = [];
+                    this.floorTilePositions = [];
                     
-                    // Get current theme
+                    // Update scene background color
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
                     
-                    // Update scene background to match theme
+                    // Update scene background color based on theme
                     this.scene.background = new THREE.Color(theme.background);
                     
-                    // Update UI colors to match the current theme
-                    this.updateUITheme();
-                    
-                    // Update player colors to match the current theme
-                    this.updatePlayerTheme();
-                    
-                    // Create ground - darker with bright outline like in the image
-                    const groundGeometry = new THREE.BoxGeometry(100, 0.5, 1);
-                    const groundMaterial = new THREE.MeshBasicMaterial({ 
-                        color: theme.platform, 
-                        transparent: true,
-                        opacity: 0.6
-                    });
-                    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
-                    this.ground.position.set(0, this.groundY, 0);
-                    this.scene.add(this.ground);
-                    this.platforms.push(this.ground);
-                    
-                    // Add glow effect to ground
-                    const groundEdges = new THREE.EdgesGeometry(groundGeometry);
-                    const groundLineMaterial = new THREE.LineBasicMaterial({ 
-                        color: theme.platformEdge, 
-                        linewidth: 2
-                    });
-                    const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
-                    this.ground.add(groundWireframe);
-                    
-                    // Add subtle glow at ground level
-                    const groundGlowGeometry = new THREE.BoxGeometry(100, 0.05, 1.5);
-                    const groundGlowMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.platformEdge,
-                        transparent: true,
-                        opacity: 0.15,
-                        blending: THREE.AdditiveBlending
-                    });
-                    const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
-                    groundGlow.position.y = 0.3; // Slightly above the ground
-                    this.ground.add(groundGlow);
-                    
-                    // Update grid colors
-                    if (this.scene.children) {
-                        this.scene.children.forEach(child => {
-                            if (child instanceof THREE.GridHelper) {
-                                // Remove old grid
-                                this.scene.remove(child);
-                            }
-                        });
-                    }
-                    
-                    // Create new grid with theme colors
-                    const gridSize = 1000;
-                    const gridDivisions = 200;
-                    const gridColor = theme.grid;
-                    
-                    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
-                    gridHelper.position.y = this.groundY - 0.4; // Slightly below ground
-                    gridHelper.material.transparent = true;
-                    gridHelper.material.opacity = 0.3;
-                    gridHelper.material.blending = THREE.AdditiveBlending;
-                    this.scene.add(gridHelper);
-                    
-                    // Rotate grid to make it horizontal
-                    gridHelper.rotation.x = Math.PI / 2;
-                    
-                    // Add a second grid with different sizing for a more complex grid pattern
-                    const secondaryGridSize = 500;
-                    const secondaryGridDivisions = 50;
-                    const secondaryGridColor = gridColor;
-                    
-                    const secondaryGridHelper = new THREE.GridHelper(secondaryGridSize, secondaryGridDivisions, secondaryGridColor, secondaryGridColor);
-                    secondaryGridHelper.position.y = this.groundY - 0.39; // Slightly above the main grid
-                    secondaryGridHelper.material.transparent = true;
-                    secondaryGridHelper.material.opacity = 0.4;
-                    secondaryGridHelper.material.blending = THREE.AdditiveBlending;
-                    this.scene.add(secondaryGridHelper);
-                    
-                    // Rotate the secondary grid
-                    secondaryGridHelper.rotation.x = Math.PI / 2;
+                    // Update UI colors to match theme
+                    document.getElementById('score-display').style.textShadow = 
+                        `0 0 10px ${theme.scoreGlow}, 0 0 20px ${theme.scoreGlow}, 0 0 30px ${theme.scoreGlow}`;
+                    document.getElementById('level-display').style.textShadow = 
+                        `0 0 10px ${theme.levelGlow}, 0 0 20px ${theme.levelGlow}, 0 0 30px ${theme.levelGlow}`;
                     
                     // Generate level from level manager
                     const levelData = this.levelManager.generateLevel(this.levelManager.currentLevel, 2);
+                    
+                    // Parse level data
                     this.parseLevel(levelData);
                     
-                    // Ensure we have at least some spikes for testing if none were created from level data
-                    if (this.obstacles.length === 0) {
-                        logDebug("No obstacles created from level data. Adding test spikes.");
-                        this.createTestSpikes();
-                    }
-                    
-                    logDebug("Level created with Tron-like effects");
+                    console.debug("Level created!");
                 }
                 
                 // Create test spikes if no spikes are being created from level data
@@ -1776,41 +1715,10 @@
                     let xPos = -40; // Start position
                     const tileSize = 2; // Size of each tile
                     
-                    // Track spike positions for clustering
-                    const spikes = [];
-                    
-                    // First pass - collect spike positions
-                    for (let col = 0; col < rows[0].length; col++) {
-                        for (let row = 0; row < rows.length; row++) {
-                            // Invert row to make bottom row the ground level
-                            const invertedRow = rows.length - 1 - row;
-                            
-                            // Get the character at this position
-                            const char = rows[invertedRow][col];
-                            
-                            // Calculate y position with proper offset to ensure platforms are above floor
-                            // For row 0 (ground level), we position at groundY + 1.0 (0.5 for ground height + 0.5 for platform half-height)
-                            // This ensures a platform at the lowest row doesn't overlap with the floor
-                            const yPos = this.groundY + 1.0 + row * tileSize;
-                            
-                            // Track spike positions
-                            if (char === '^') {
-                                spikes.push({ x: xPos, y: yPos });
-                                logDebug(`Found spike at position: ${xPos}, ${yPos}`);
-                            }
-                        }
-                        
-                        // Move to the next column
-                        xPos += tileSize;
-                    }
-                    
                     // Reset position for actual creation
                     xPos = -40;
                     
-                    // Cluster the spikes
-                    const clusteredSpikes = this.clusterSpikes(spikes);
-                    
-                    // Second pass - create level elements
+                    // First pass - create all level elements
                     for (let col = 0; col < rows[0].length; col++) {
                         for (let row = 0; row < rows.length; row++) {
                             // Invert row to make bottom row the ground level
@@ -1822,18 +1730,326 @@
                             // Calculate y position with proper offset to ensure platforms are above floor
                             const yPos = this.groundY + 1.0 + row * tileSize;
                             
-                            // Skip spike creation here as we'll handle it separately
-                            if (char !== '^') {
-                                this.createTile(char, xPos, yPos);
+                            // Add a special check for bottom row floor tiles
+                            const isBottomRow = (row === 0);
+                            
+                            // Special handling for floor tiles
+                            if (char === 'B' && isBottomRow) {
+                                // Create floor tile - add to floor positions
+                                if (!this.floorTilePositions) {
+                                    this.floorTilePositions = [];
+                                }
+                                this.floorTilePositions.push(xPos);
+                                
+                                // Mark this position as having a floor tile
+                                logDebug(`Floor tile at ${xPos}`);
                             }
+                            
+                            // Create the appropriate tile based on the character
+                            this.createTile(char, xPos, yPos, isBottomRow);
                         }
                         
                         // Move to the next column
                         xPos += tileSize;
                     }
                     
-                    // Create clustered spikes
-                    this.createSpikesClusters(clusteredSpikes);
+                    // After all tiles are processed, create the complete floor based on collected positions
+                    this.createFloor();
+                }
+                
+                createTile(type, x, y, isBottomRow) {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Check if this position would place the object too close to or below the floor
+                    // For platforms, we need to check based on their height
+                    const platformHeight = 1; // Standard platform height
+                    const minYPosition = this.groundY + 0.5 + platformHeight/2;
+                    
+                    // Skip floor tiles at the bottom row - they'll be handled by createFloor
+                    if (isBottomRow && type === 'B') {
+                        return;
+                    }
+                    
+                    switch (type) {
+                        case 'B': // Block/Platform
+                            // Skip creating platform if it would overlap with floor
+                            if (y - platformHeight/2 <= this.groundY + 0.5) {
+                                // Skip this platform as it would overlap with the floor
+                                return;
+                            }
+                            
+                            const platformGeometry = new THREE.BoxGeometry(2, 1, 1);
+                            const platformMaterial = new THREE.MeshBasicMaterial({ 
+                                color: theme.platform, 
+                                transparent: true,
+                                opacity: 0.8
+                            });
+                            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
+                            platform.position.set(x, y, 0);
+                            platform.userData.type = 'platform';
+                            platform.userData.width = 2;
+                            platform.userData.height = 1;
+                            this.scene.add(platform);
+                            this.platforms.push(platform);
+                            
+                            // Add bright edges glow effect to platforms - themed color
+                            const edges = new THREE.EdgesGeometry(platformGeometry);
+                            const lineMaterial = new THREE.LineBasicMaterial({ 
+                                color: theme.platformEdge, 
+                                linewidth: 2
+                            });
+                            const wireframe = new THREE.LineSegments(edges, lineMaterial);
+                            platform.add(wireframe);
+                            
+                            break;
+                        
+                        case 'W': // Upward spike
+                            this.createSpike(x, y, 'up');
+                            break;
+                            
+                        case 'V': // Downward spike
+                            this.createSpike(x, y, 'down');
+                            break;
+                            
+                        case 'S': // Start position
+                            // Mark start position for player
+                            this.startPosition = { x, y: y + 0.5 }; // Slight offset to place player above floor
+                            
+                            // Set player position if this is a new level
+                            if (this.player) {
+                                // Only set position if player exists
+                                if (!this.player.hasMovedFromStart) {
+                                    this.player.position.set(x, y + 0.5, 0);
+                                }
+                            }
+                            break;
+                            
+                        case 'E': // End/portal
+                            // Create portal at this position
+                            this.createPortal(x, y + 1);
+                            break;
+                            
+                        case 'C': // Collectible/coin
+                            this.createCollectible(x, y);
+                            break;
+                            
+                        case 'J': // Jump pad
+                            // Create jump pad at this position
+                            const jumpPadGeometry = new THREE.BoxGeometry(1.5, 0.5, 1);
+                            const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
+                                color: theme.jumpPad, 
+                                transparent: true,
+                                opacity: 0.8
+                            });
+                            const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
+                            jumpPad.position.set(x, y - 0.25, 0); // Position slightly lower
+                            jumpPad.userData.type = 'jumpPad';
+                            jumpPad.userData.width = 1.5;
+                            jumpPad.userData.height = 0.5;
+                            this.scene.add(jumpPad);
+                            this.platforms.push(jumpPad);
+                            
+                            // Add bright edges glow effect
+                            const jumpPadEdges = new THREE.EdgesGeometry(jumpPadGeometry);
+                            const jumpPadLineMaterial = new THREE.LineBasicMaterial({ 
+                                color: theme.jumpPadEdge, 
+                                linewidth: 2
+                            });
+                            const jumpPadWireframe = new THREE.LineSegments(jumpPadEdges, jumpPadLineMaterial);
+                            jumpPad.add(jumpPadWireframe);
+                            
+                            // Add an arrow indicator
+                            const arrowGeometry = new THREE.BufferGeometry();
+                            const arrowPoints = [
+                                new THREE.Vector3(-0.4, 0, 0),
+                                new THREE.Vector3(0, 0.6, 0),
+                                new THREE.Vector3(0.4, 0, 0)
+                            ];
+                            arrowGeometry.setFromPoints(arrowPoints);
+                            arrowGeometry.setIndex([0, 1, 2]);
+                            
+                            const arrowMaterial = new THREE.MeshBasicMaterial({ 
+                                color: theme.jumpPadEdge, 
+                                side: THREE.DoubleSide
+                            });
+                            const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+                            arrow.position.set(0, 0.3, 0.1);
+                            jumpPad.add(arrow);
+                            
+                            break;
+                            
+                        case 'P': // Special collectible
+                            this.createSpecialCollectible(x, y);
+                            break;
+                    }
+                }
+                
+                createSpike(x, y, direction) {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Create a spike obstacle based on direction
+                    const spikeSize = 0.7; // Base size for spikes
+                    const spikeGroup = new THREE.Group();
+                    
+                    // Create the spike shape using triangles
+                    const spikeGeometry = new THREE.BufferGeometry();
+                    
+                    // Adjust vertices based on direction
+                    let vertices;
+                    if (direction === 'up') {
+                        vertices = new Float32Array([
+                            0, spikeSize, 0,      // top point
+                            -spikeSize/2, 0, 0,   // bottom left
+                            spikeSize/2, 0, 0     // bottom right
+                        ]);
+                    } else { // down
+                        vertices = new Float32Array([
+                            0, -spikeSize, 0,     // bottom point
+                            -spikeSize/2, 0, 0,   // top left
+                            spikeSize/2, 0, 0     // top right
+                        ]);
+                    }
+                    
+                    spikeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                    spikeGeometry.setIndex([0, 1, 2]); // Create a face
+                    
+                    // Use the theme's obstacle color for the spike
+                    const spikeMaterial = new THREE.MeshBasicMaterial({
+                        color: theme.obstacle || 0xff0000, // Default to red if theme.obstacle is undefined
+                        side: THREE.DoubleSide
+                    });
+                    
+                    const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                    
+                    // Create spike outline for Tron-like glow effect using theme colors
+                    const outlineGeometry = new THREE.EdgesGeometry(spikeGeometry);
+                    const outlineMaterial = new THREE.LineBasicMaterial({
+                        color: theme.obstacleEdge || 0xffffff, // Default to white if theme.obstacleEdge is undefined
+                        transparent: true,
+                        opacity: 0.9,
+                        linewidth: 2
+                    });
+                    
+                    const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
+                    
+                    // Create primary glow effect around spike using theme colors
+                    const glowGeometry = new THREE.BufferGeometry().copy(spikeGeometry);
+                    const glowMaterial = new THREE.MeshBasicMaterial({
+                        color: theme.obstacleEdge || 0xffffff, // Default to white if theme.obstacleEdge is undefined
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.3,
+                        blending: THREE.AdditiveBlending
+                    });
+                    
+                    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+                    glowMesh.scale.multiplyScalar(1.15); // Slightly larger than the spike
+                    
+                    // Add all components to the group
+                    spikeGroup.add(spike);
+                    spikeGroup.add(outline);
+                    spikeGroup.add(glowMesh);
+                    
+                    // Position the spike
+                    spikeGroup.position.set(x, y, 0);
+                    
+                    // Add to scene and obstacle list ONLY (not platforms)
+                    this.scene.add(spikeGroup);
+                    this.obstacles.push(spikeGroup);
+                    
+                    // Add collision data - important for detecting player collision
+                    spikeGroup.userData.type = 'spike';
+                    spikeGroup.userData.width = spikeSize;
+                    spikeGroup.userData.height = spikeSize;
+                    spikeGroup.userData.direction = direction;
+                    
+                    // Add pulsing animation
+                    const initialScale = 1.0;
+                    const glowScale = 1.15;
+                    let glowDirection = 1;
+                    
+                    const animate = () => {
+                        if (!this.isRunning || this.isPaused) return;
+                        
+                        // Subtle pulsing effect for glow
+                        glowMesh.scale.x += 0.003 * glowDirection;
+                        glowMesh.scale.y += 0.003 * glowDirection;
+                        
+                        if (glowMesh.scale.x > glowScale * 1.1) {
+                            glowDirection = -1;
+                        } else if (glowMesh.scale.x < glowScale * 0.9) {
+                            glowDirection = 1;
+                        }
+                        
+                        // Continue animation
+                        requestAnimationFrame(animate);
+                    };
+                    
+                    // Start animation
+                    animate();
+                    
+                    // Logging for debugging
+                    console.log(`Created spike at (${x}, ${y}) with direction ${direction}`);
+                    
+                    return spikeGroup;
+                }
+                
+                createFloor() {
+                    if (!this.floorTilePositions || this.floorTilePositions.length === 0) {
+                        logDebug("No floor tiles found in level data");
+                        return;
+                    }
+                    
+                    // Get current theme
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Sort positions to find min and max
+                    const positions = [...this.floorTilePositions].sort((a, b) => a - b);
+                    const minX = positions[0];
+                    const maxX = positions[positions.length - 1];
+                    const width = maxX - minX + 2; // Add 2 for tile width
+                    const centerX = (maxX + minX) / 2;
+                    
+                    // Create the floor
+                    const groundGeometry = new THREE.BoxGeometry(width, 0.5, 1);
+                    const groundMaterial = new THREE.MeshBasicMaterial({ 
+                        color: theme.platform, 
+                                transparent: true,
+                        opacity: 0.6
+                    });
+                    
+                    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                    this.ground.position.set(centerX, this.groundY, 0);
+                    this.scene.add(this.ground);
+                    this.platforms.push(this.ground);
+                    
+                    // Add glow effect to ground
+                    const groundEdges = new THREE.EdgesGeometry(groundGeometry);
+                    const groundLineMaterial = new THREE.LineBasicMaterial({ 
+                        color: theme.platformEdge, 
+                                linewidth: 2
+                            });
+                    const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
+                    this.ground.add(groundWireframe);
+                    
+                    // Add subtle glow at ground level
+                    const groundGlowGeometry = new THREE.BoxGeometry(width, 0.05, 1.5);
+                    const groundGlowMaterial = new THREE.MeshBasicMaterial({
+                        color: theme.platformEdge,
+                                transparent: true,
+                        opacity: 0.15,
+                                blending: THREE.AdditiveBlending
+                            });
+                    const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
+                    groundGlow.position.y = 0.3; // Slightly above the ground
+                    this.ground.add(groundGlow);
+                    
+                    logDebug(`Created floor from ${positions.length} tiles, width: ${width}`);
                 }
                 
                 // Cluster the spikes
@@ -2064,6 +2280,83 @@
                 }
                 
                 checkCollisions() {
+                    // Obstacle collisions - check these first so spikes take priority
+                    for (let i = 0; i < this.obstacles.length; i++) {
+                        const obstacle = this.obstacles[i];
+                        const playerLeft = this.player.position.x - this.playerSize/2;
+                        const playerRight = this.player.position.x + this.playerSize/2;
+                        const playerBottom = this.player.position.y - this.playerSize/2;
+                        const playerTop = this.player.position.y + this.playerSize/2;
+                        
+                        // Check if this is a spike
+                        const isSpike = obstacle.userData.type === 'spike';
+                        
+                        // If this is a spike, we need to adjust the collision detection based on direction
+                        let obstacleWidth, obstacleHeight, obstacleLeft, obstacleRight, obstacleBottom, obstacleTop;
+                        
+                        if (isSpike) {
+                            const spikeSize = obstacle.userData.width;
+                            const spikeDirection = obstacle.userData.direction;
+                            
+                            // For spikes, we need to adjust the hitbox based on the triangle shape
+                            obstacleWidth = spikeSize;
+                            obstacleHeight = spikeSize;
+                            
+                            obstacleLeft = obstacle.position.x - spikeSize/2;
+                            obstacleRight = obstacle.position.x + spikeSize/2;
+                            
+                            if (spikeDirection === 'up') {
+                                // For upward spikes, the top is at position.y + spikeSize
+                                // and the bottom is at position.y
+                                obstacleBottom = obstacle.position.y;
+                                obstacleTop = obstacle.position.y + spikeSize;
+                            } else {
+                                // For downward spikes, the top is at position.y
+                                // and the bottom is at position.y - spikeSize
+                                obstacleBottom = obstacle.position.y - spikeSize;
+                                obstacleTop = obstacle.position.y;
+                            }
+                            
+                            // Use a simplified collision box for spikes - just check if the player overlaps with the spike
+                            if (playerRight > obstacleLeft + 0.1 && 
+                                playerLeft < obstacleRight - 0.1 &&
+                                playerBottom < obstacleTop - 0.1 && 
+                                playerTop > obstacleBottom + 0.1) {
+                                
+                                // Player hit a spike!
+                                console.log("Player hit a spike! Position:", obstacle.position);
+                                
+                                // Create death effect
+                                this.createDeathEffect(this.player.position.x, this.player.position.y);
+                                
+                                // Game over
+                                this.gameOver();
+                                return; // Exit immediately to prevent platform collision checks
+                            }
+                        } else {
+                            // Regular obstacle collision with reduced hitbox for better gameplay feel
+                            obstacleWidth = obstacle.userData.width;
+                            obstacleHeight = obstacle.userData.height;
+                            obstacleLeft = obstacle.position.x - obstacleWidth/2;
+                            obstacleRight = obstacle.position.x + obstacleWidth/2;
+                            obstacleBottom = obstacle.position.y - obstacleHeight/2;
+                            obstacleTop = obstacle.position.y + obstacleHeight/2;
+                            
+                            // Ensure the obstacle is not below ground or hidden within ground
+                            if (obstacleTop <= this.groundY + 0.5) {
+                                continue; // Skip obstacles that are hidden in the ground
+                            }
+                            
+                            if (playerRight > obstacleLeft + 0.2 && 
+                                playerLeft < obstacleRight - 0.2 &&
+                                playerBottom < obstacleTop - 0.2 && 
+                                playerTop > obstacleBottom + 0.2) {
+                                this.gameOver();
+                                return; // Exit immediately
+                            }
+                        }
+                    }
+                    
                     // Platform collisions
                     this.onPlatform = false;
                     
@@ -2116,34 +2409,6 @@
                                 this.player.position.y = platformBottom - this.playerSize/2 - 0.01; // Small offset
                                 this.playerVelocity.y = 0;
                             }
-                        }
-                    });
-                    
-                    // Obstacle collisions
-                    this.obstacles.forEach(obstacle => {
-                        const playerLeft = this.player.position.x - this.playerSize/2;
-                        const playerRight = this.player.position.x + this.playerSize/2;
-                        const playerBottom = this.player.position.y - this.playerSize/2;
-                        const playerTop = this.player.position.y + this.playerSize/2;
-                        
-                        const obstacleWidth = obstacle.userData.width;
-                        const obstacleHeight = obstacle.userData.height;
-                        const obstacleLeft = obstacle.position.x - obstacleWidth/2;
-                        const obstacleRight = obstacle.position.x + obstacleWidth/2;
-                        const obstacleBottom = obstacle.position.y - obstacleHeight/2;
-                        const obstacleTop = obstacle.position.y + obstacleHeight/2;
-                        
-                        // Ensure the obstacle is not below ground or hidden within ground
-                        if (obstacleTop <= this.groundY + 0.5) {
-                            return; // Skip obstacles that are hidden in the ground
-                        }
-                        
-                        // Check for collision with reduced hitbox for better gameplay feel
-                        if (playerRight > obstacleLeft + 0.2 && 
-                            playerLeft < obstacleRight - 0.2 &&
-                            playerBottom < obstacleTop - 0.2 && 
-                            playerTop > obstacleBottom + 0.2) {
-                            this.gameOver();
                         }
                     });
                     
@@ -2240,6 +2505,64 @@
                     
                     // Update the keyframes animation dynamically using CSS variables
                     document.documentElement.style.setProperty('--theme-color', themeColor);
+                }
+                
+                // Update the player's colors to match the current theme
+                updatePlayerTheme() {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Check if player exists
+                    if (!this.player) {
+                        return;
+                    }
+                    
+                    // Check if player theme color needs updating
+                    if (this.currentPlayerThemeColor !== theme.player) {
+                        // Update main mesh
+                        if (this.playerMainMesh) {
+                            this.playerMainMesh.material.color.set(theme.player);
+                        }
+                        
+                        // Update inner mesh (find by size)
+                        this.player.children.forEach(child => {
+                            if (child.geometry && 
+                                child.geometry.type === 'BoxGeometry' && 
+                                child.geometry.parameters.width === this.playerSize * 0.6) {
+                                child.material.color.set(theme.player);
+                            }
+                        });
+                        
+                        // Update edge wireframe
+                        if (this.playerWireframe) {
+                            this.playerWireframe.material.color.set(theme.playerEdge || theme.player);
+                        }
+                        
+                        // Update glow
+                        if (this.playerGlow) {
+                            this.playerGlow.material.color.set(theme.player);
+                        }
+                        
+                        // Update jump path if it exists
+                        if (this.jumpPath && this.jumpPath.material) {
+                            this.jumpPath.material.color.set(theme.player);
+                        }
+                        
+                        // Update any active jump particles
+                        if (this.jumpParticles && this.jumpParticles.length > 0) {
+                            this.jumpParticles.forEach(particle => {
+                                if (particle.material) {
+                                    particle.material.color.set(theme.player);
+                                }
+                            });
+                        }
+                        
+                        // Update stored color reference
+                        this.currentPlayerThemeColor = theme.player;
+                        
+                        logDebug("Updated player theme colors");
+                    }
                 }
                 
                 gameOver() {
@@ -2615,270 +2938,245 @@
                     return this.currentLevel;
                 }
 
-                createTile(type, x, y) {
+                createCollectible(x, y) {
                     // Get current theme colors
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
                     
-                    // Check if this position would place the object too close to or below the floor
-                    // For platforms, we need to check based on their height
-                    const platformHeight = 1; // Standard platform height
-                    const minYPosition = this.groundY + 0.5 + platformHeight/2;
-                    
-                    switch (type) {
-                        case 'B': // Block/Platform
-                            // Skip creating platform if it would overlap with floor
-                            if (y - platformHeight/2 <= this.groundY + 0.5) {
-                                // Skip this platform as it would overlap with the floor
-                                return;
-                            }
-                            
-                            const platformGeometry = new THREE.BoxGeometry(2, 1, 1);
-                            const platformMaterial = new THREE.MeshBasicMaterial({ 
-                                color: theme.platform, 
-                                transparent: true,
-                                opacity: 0.8
-                            });
-                            const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-                            platform.position.set(x, y, 0);
-                            platform.userData.type = 'platform';
-                            platform.userData.width = 2;
-                            platform.userData.height = 1;
-                            this.scene.add(platform);
-                            this.platforms.push(platform);
-                            
-                            // Add bright edges glow effect to platforms - themed color
-                            const edges = new THREE.EdgesGeometry(platformGeometry);
-                            const lineMaterial = new THREE.LineBasicMaterial({ 
-                                color: theme.platformEdge, 
-                                linewidth: 2
-                            });
-                            const wireframe = new THREE.LineSegments(edges, lineMaterial);
-                            platform.add(wireframe);
-                            
-                            break;
-                            
-                        case 'C': // Coin
-                            const coinGeometry = new THREE.CircleGeometry(0.5, 16);
-                            const coinMaterial = new THREE.MeshBasicMaterial({ 
-                                color: theme.collectible,
-                                transparent: true,
-                                opacity: 0.9,
-                                side: THREE.DoubleSide
-                            });
-                            const coin = new THREE.Mesh(coinGeometry, coinMaterial);
-                            coin.position.set(x, y, 0);
-                            coin.userData.type = 'coin';
-                            coin.userData.width = 1;
-                            coin.userData.height = 1;
-                            coin.userData.collected = false;
-                            this.scene.add(coin);
-                            this.collectibles.push(coin);
-                            
-                            // Add glow effect to coins
-                            const coinGlowGeometry = new THREE.CircleGeometry(0.7, 16);
-                            const coinGlowMaterial = new THREE.MeshBasicMaterial({
-                                color: theme.collectible,
-                                transparent: true,
-                                opacity: 0.4,
-                                blending: THREE.AdditiveBlending,
-                                side: THREE.DoubleSide
-                            });
-                            const coinGlow = new THREE.Mesh(coinGlowGeometry, coinGlowMaterial);
-                            coin.add(coinGlow);
-                            
-                            break;
-                            
-                        case 'E': // End of level - place portal
-                            this.createPortal(x, y + 1);
-                            break;
-                            
-                        case 'J': // Jump pad
-                            // Skip creating jump pad if it would overlap with floor
-                            if (y - 0.25 <= this.groundY + 0.5) {
-                                // Skip this jump pad
-                                return;
-                            }
-                            
-                            const jumpPadGeometry = new THREE.BoxGeometry(1.5, 0.5, 1);
-                            const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
-                                color: theme.collectible,
-                                transparent: true,
-                                opacity: 0.8
-                            });
-                            const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
-                            jumpPad.position.set(x, y, 0);
-                            jumpPad.userData.type = 'jumpPad';
-                            jumpPad.userData.width = 1.5;
-                            jumpPad.userData.height = 0.5;
-                            this.scene.add(jumpPad);
-                            this.platforms.push(jumpPad);
-                            
-                            // Add edges glow effect to jump pads
-                            const jumpPadEdges = new THREE.EdgesGeometry(jumpPadGeometry);
-                            const jumpPadLineMaterial = new THREE.LineBasicMaterial({ 
-                                color: theme.collectible, 
-                                linewidth: 2
-                            });
-                            const jumpPadWireframe = new THREE.LineSegments(jumpPadEdges, jumpPadLineMaterial);
-                            jumpPad.add(jumpPadWireframe);
-                            
-                            // Add pulse glow effect
-                            const jumpPadGlowGeometry = new THREE.BoxGeometry(1.7, 0.7, 1.2);
-                            const jumpPadGlowMaterial = new THREE.MeshBasicMaterial({
-                                color: theme.collectible,
-                                transparent: true,
-                                opacity: 0.4,
-                                blending: THREE.AdditiveBlending
-                            });
-                            const jumpPadGlow = new THREE.Mesh(jumpPadGlowGeometry, jumpPadGlowMaterial);
-                            jumpPad.add(jumpPadGlow);
-                            
-                            // Store the glow mesh for animation
-                            jumpPad.userData.glowMesh = jumpPadGlow;
-                            break;
-                            
-                        case 'P': // Special collectible
-                            const specialCoinGeometry = new THREE.CircleGeometry(0.7, 16);
-                            const specialCoinMaterial = new THREE.MeshBasicMaterial({ 
-                                color: 0x00FFAA, // Special teal-colored coin
-                                transparent: true,
-                                opacity: 0.9,
-                                side: THREE.DoubleSide
-                            });
-                            const specialCoin = new THREE.Mesh(specialCoinGeometry, specialCoinMaterial);
-                            specialCoin.position.set(x, y, 0);
-                            specialCoin.userData.type = 'coin';
-                            specialCoin.userData.width = 1.4;
-                            specialCoin.userData.height = 1.4;
-                            specialCoin.userData.collected = false;
-                            // Special coin worth more points
-                            specialCoin.userData.value = 500;
-                            this.scene.add(specialCoin);
-                            this.collectibles.push(specialCoin);
-                            
-                            // Add glow effect to special coin
-                            const specialCoinGlowGeometry = new THREE.CircleGeometry(1, 16);
-                            const specialCoinGlowMaterial = new THREE.MeshBasicMaterial({
-                                color: 0x00FFAA,
-                                transparent: true,
-                                opacity: 0.4,
-                                blending: THREE.AdditiveBlending,
-                                side: THREE.DoubleSide
-                            });
-                            const specialCoinGlow = new THREE.Mesh(specialCoinGlowGeometry, specialCoinGlowMaterial);
-                            specialCoin.add(specialCoinGlow);
-                            break;
-                            
-                        case 'S': // Start position
-                            // Move player to start position
-                            if (this.player) {
-                                // Position player above the ground/marker with proper offset
-                                this.player.position.set(x, y + this.playerSize/2 + 0.1, 0);
-                            }
-                            break;
-                    }
-                }
-
-                // Create jump arc visualization
-                createJumpPath(startPoint, endPoint) {
-                    // Remove any existing path
-                    if (this.jumpPath) {
-                        this.scene.remove(this.jumpPath);
-                        this.jumpPath = null;
-                        this.jumpHistoryPoints = [];
-                    }
-                    
-                    // Get current theme colors for the jump path
-                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
-                    const theme = this.themes[themeIndex];
-                    const jumpPathColor = theme.player; // Use player color for jump path
-                    
-                    // Create a curve for the jump trajectory
-                    const midPoint = new THREE.Vector3(
-                        (startPoint.x + endPoint.x) / 2,
-                        Math.max(startPoint.y, endPoint.y) + this.jumpHeight,
-                        0
-                    );
-                    
-                    const curve = new THREE.QuadraticBezierCurve3(
-                        new THREE.Vector3(startPoint.x, startPoint.y, 0),
-                        midPoint,
-                        new THREE.Vector3(endPoint.x, endPoint.y, 0)
-                    );
-                    
-                    // Create a path from the curve
-                    const points = curve.getPoints(50);
-                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                    
-                    // Use the theme color for the path
-                    const material = new THREE.LineBasicMaterial({ 
-                        color: jumpPathColor,
-                        linewidth: 2,
+                    // Create a collectible object
+                    const collectibleGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+                    const collectibleMaterial = new THREE.MeshBasicMaterial({
+                        color: theme.collectible,
                         transparent: true,
-                        opacity: 0.7
+                        opacity: 0.9
                     });
+                    const collectible = new THREE.Mesh(collectibleGeometry, collectibleMaterial);
+                    collectible.position.set(x, y, 0);
+                    collectible.userData.type = 'coin';
+                    collectible.userData.width = 1;
+                    collectible.userData.height = 1;
+                    collectible.userData.collected = false;
+                    this.scene.add(collectible);
+                    this.collectibles.push(collectible);
                     
-                    this.jumpPath = new THREE.Line(geometry, material);
-                    this.scene.add(this.jumpPath);
+                    // Add glow effect to collectibles
+                    const collectibleGlowGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+                    const collectibleGlowMaterial = new THREE.MeshBasicMaterial({
+                        color: theme.collectible,
+                        transparent: true,
+                        opacity: 0.4,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const collectibleGlow = new THREE.Mesh(collectibleGlowGeometry, collectibleGlowMaterial);
+                    collectible.add(collectibleGlow);
                     
-                    // Store the points for history tracking
-                    this.jumpHistoryPoints = points;
+                    // Add special collectible effect
+                    const specialEffectGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+                    const specialEffectMaterial = new THREE.MeshBasicMaterial({
+                        color: theme.collectible,
+                        transparent: true,
+                        opacity: 0.5,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const specialEffect = new THREE.Mesh(specialEffectGeometry, specialEffectMaterial);
+                    specialEffect.position.set(0, 0.25, 0.1);
+                    collectible.add(specialEffect);
                     
-                    return points;
+                    // Add special collectible sound
+                    const sound = new Audio();
+                    sound.src = 'path/to/special-collectible-sound.mp3';
+                    sound.autoplay = false;
+                    collectible.userData.sound = sound;
                 }
 
-                // Update the player's colors to match the current theme
-                updatePlayerTheme() {
+                createSpecialCollectible(x, y) {
                     // Get current theme colors
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
                     
-                    // Check if player theme color needs updating
-                    if (this.currentPlayerThemeColor !== theme.player) {
-                        // Update main mesh
-                        if (this.playerMainMesh) {
-                            this.playerMainMesh.material.color.set(theme.player);
-                        }
-                        
-                        // Update inner mesh (find by size)
-                        this.player.children.forEach(child => {
-                            if (child.geometry && 
-                                child.geometry.type === 'BoxGeometry' && 
-                                child.geometry.parameters.width === this.playerSize * 0.6) {
-                                child.material.color.set(theme.player);
+                    // Create a special collectible object
+                    const specialCollectibleGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
+                    const specialCollectibleMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00FFAA, // Special teal-colored collectible
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    const specialCollectible = new THREE.Mesh(specialCollectibleGeometry, specialCollectibleMaterial);
+                    specialCollectible.position.set(x, y, 0);
+                    specialCollectible.userData.type = 'special';
+                    specialCollectible.userData.width = 1.4;
+                    specialCollectible.userData.height = 1.4;
+                    specialCollectible.userData.collected = false;
+                    // Special collectible worth more points
+                    specialCollectible.userData.value = 500;
+                    this.scene.add(specialCollectible);
+                    this.collectibles.push(specialCollectible);
+                    
+                    // Add glow effect to special collectible
+                    const specialCollectibleGlowGeometry = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+                    const specialCollectibleGlowMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00FFAA,
+                        transparent: true,
+                        opacity: 0.4,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const specialCollectibleGlow = new THREE.Mesh(specialCollectibleGlowGeometry, specialCollectibleGlowMaterial);
+                    specialCollectible.add(specialCollectibleGlow);
+                    
+                    // Add special collectible sound
+                    const sound = new Audio();
+                    sound.src = 'path/to/special-collectible-sound.mp3';
+                    sound.autoplay = false;
+                    specialCollectible.userData.sound = sound;
+                }
+
+                clearLevel() {
+                    if (this.platforms) {
+                        this.platforms.forEach(platform => this.scene.remove(platform));
+                    }
+                    if (this.obstacles) {
+                        this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
+                    }
+                    if (this.collectibles) {
+                        this.collectibles.forEach(coin => this.scene.remove(coin));
+                    }
+                    if (this.portal) {
+                        this.scene.remove(this.portal);
+                        this.portal = null;
+                    }
+                    if (this.ground) {
+                        this.scene.remove(this.ground);
+                        this.ground = null;
+                    }
+                    
+                    // Clear grid and UI theme elements
+                    this.clearGrids();
+                    this.updateUITheme();
+                    this.updatePlayerTheme();
+                }
+                
+                clearGrids() {
+                    // Remove existing grids
+                    if (this.scene.children) {
+                        this.scene.children.forEach(child => {
+                            if (child instanceof THREE.GridHelper) {
+                                this.scene.remove(child);
                             }
                         });
-                        
-                        // Update edge wireframe
-                        if (this.playerWireframe) {
-                            this.playerWireframe.material.color.set(theme.playerEdge || theme.player);
-                        }
-                        
-                        // Update glow
-                        if (this.playerGlow) {
-                            this.playerGlow.material.color.set(theme.player);
-                        }
-                        
-                        // Update jump path if it exists
-                        if (this.jumpPath && this.jumpPath.material) {
-                            this.jumpPath.material.color.set(theme.player);
-                        }
-                        
-                        // Update any active jump particles
-                        if (this.jumpParticles && this.jumpParticles.length > 0) {
-                            this.jumpParticles.forEach(particle => {
-                                if (particle.material) {
-                                    particle.material.color.set(theme.player);
-                                }
-                            });
-                        }
-                        
-                        // Update stored color reference
-                        this.currentPlayerThemeColor = theme.player;
-                        
-                        logDebug("Updated player theme colors");
                     }
+                    
+                    // Add new themed grids
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Create main grid with theme colors
+                    const gridSize = 1000;
+                    const gridDivisions = 200;
+                    const gridColor = theme.grid;
+                    
+                    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
+                    gridHelper.position.y = this.groundY - 0.4; // Slightly below ground
+                    gridHelper.material.transparent = true;
+                    gridHelper.material.opacity = 0.3;
+                    gridHelper.material.blending = THREE.AdditiveBlending;
+                    this.scene.add(gridHelper);
+                    
+                    // Rotate grid to make it horizontal
+                    gridHelper.rotation.x = Math.PI / 2;
+                    
+                    // Add a second grid with different sizing for a more complex grid pattern
+                    const secondaryGridSize = 500;
+                    const secondaryGridDivisions = 50;
+                    const secondaryGridColor = gridColor;
+                    
+                    const secondaryGridHelper = new THREE.GridHelper(secondaryGridSize, secondaryGridDivisions, secondaryGridColor, secondaryGridColor);
+                    secondaryGridHelper.position.y = this.groundY - 0.39; // Slightly above the main grid
+                    secondaryGridHelper.material.transparent = true;
+                    secondaryGridHelper.material.opacity = 0.4;
+                    secondaryGridHelper.material.blending = THREE.AdditiveBlending;
+                    this.scene.add(secondaryGridHelper);
+                    
+                    // Rotate the secondary grid
+                    secondaryGridHelper.rotation.x = Math.PI / 2;
+                }
+
+                createDeathEffect(x, y) {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Create particle explosion effect
+                    const particleCount = 15;
+                    const particles = [];
+                    
+                    for (let i = 0; i < particleCount; i++) {
+                        // Create particles with sizes that vary slightly
+                        const size = 0.1 + Math.random() * 0.15;
+                        const particleGeometry = new THREE.BoxGeometry(size, size, size);
+                        
+                        // Use player color for particles
+                        const particleMaterial = new THREE.MeshBasicMaterial({
+                            color: theme.player,
+                            transparent: true,
+                            opacity: 0.8,
+                            blending: THREE.AdditiveBlending
+                        });
+                        
+                        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                        
+                        // Position at player location
+                        particle.position.set(x, y, 0);
+                        
+                        // Add random velocity
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = 0.05 + Math.random() * 0.1;
+                        particle.userData.velocityX = Math.cos(angle) * speed;
+                        particle.userData.velocityY = Math.sin(angle) * speed;
+                        
+                        // Add rotation
+                        particle.userData.rotationSpeed = (Math.random() - 0.5) * 0.2;
+                        
+                        // Add the particle to the scene
+                        this.scene.add(particle);
+                        particles.push(particle);
+                    }
+                    
+                    // Create a fade-out effect
+                    const fadeAnimation = () => {
+                        if (particles.length === 0 || !this.isRunning) return;
+                        
+                        // Update each particle's position and opacity
+                        for (let i = particles.length - 1; i >= 0; i--) {
+                            const particle = particles[i];
+                            
+                            // Update position
+                            particle.position.x += particle.userData.velocityX;
+                            particle.position.y += particle.userData.velocityY;
+                            
+                            // Add gravity effect
+                            particle.userData.velocityY -= 0.002;
+                            
+                            // Update rotation
+                            particle.rotation.z += particle.userData.rotationSpeed;
+                            
+                            // Reduce opacity
+                            particle.material.opacity -= 0.01;
+                            
+                            // Remove particle when it's no longer visible
+                            if (particle.material.opacity <= 0) {
+                                this.scene.remove(particle);
+                                particles.splice(i, 1);
+                            }
+                        }
+                        
+                        // Continue animation if there are still particles
+                        if (particles.length > 0) {
+                            requestAnimationFrame(fadeAnimation);
+                        }
+                    };
+                    
+                    // Start the animation
+                    fadeAnimation();
                 }
             }
 
