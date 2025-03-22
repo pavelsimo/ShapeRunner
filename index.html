@@ -30,21 +30,22 @@
         #score-display {
             background-color: rgba(0, 0, 0, 0.5);
             padding: 10px 15px;
-            border: 2px solid #00FFFF;
+            border: 2px solid var(--theme-color, #00FFFF);
             border-radius: 4px;
             font-family: 'Orbitron', sans-serif;
             font-size: 18px;
-            box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
-            text-shadow: 0 0 5px #00FFFF;
+            box-shadow: 0 0 10px var(--theme-color, #00FFFF), inset 0 0 5px var(--theme-color, #00FFFF);
+            text-shadow: 0 0 5px var(--theme-color, #00FFFF);
             margin-bottom: 15px;
             display: inline-block;
             transition: all 0.2s ease;
             letter-spacing: 1px;
             animation: uiGlow 2s infinite alternate;
+            color: var(--theme-color, #00FFFF);
         }
         
         #score-display:hover {
-            box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
+            box-shadow: 0 0 15px var(--theme-color, #00FFFF), inset 0 0 8px var(--theme-color, #00FFFF);
         }
         
         #level-display {
@@ -54,30 +55,31 @@
             transform: translateX(-50%);
             background-color: rgba(0, 0, 0, 0.5);
             padding: 10px 15px;
-            border: 2px solid #00FFFF;
+            border: 2px solid var(--theme-color, #00FFFF);
             border-radius: 4px;
             font-family: 'Orbitron', sans-serif;
             font-size: 18px;
-            box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
-            text-shadow: 0 0 5px #00FFFF;
+            box-shadow: 0 0 10px var(--theme-color, #00FFFF), inset 0 0 5px var(--theme-color, #00FFFF);
+            text-shadow: 0 0 5px var(--theme-color, #00FFFF);
             letter-spacing: 1px;
             z-index: 100;
             transition: all 0.2s ease;
             animation: uiGlow 2s infinite alternate;
+            color: var(--theme-color, #00FFFF);
         }
         
         #level-display:hover {
-            box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
+            box-shadow: 0 0 15px var(--theme-color, #00FFFF), inset 0 0 8px var(--theme-color, #00FFFF);
         }
         
         @keyframes uiGlow {
             from {
-                box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
-                text-shadow: 0 0 5px #00FFFF;
+                box-shadow: 0 0 10px var(--theme-color, #00FFFF), inset 0 0 5px var(--theme-color, #00FFFF);
+                text-shadow: 0 0 5px var(--theme-color, #00FFFF);
             }
             to {
-                box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
-                text-shadow: 0 0 8px #00FFFF;
+                box-shadow: 0 0 15px var(--theme-color, #00FFFF), inset 0 0 8px var(--theme-color, #00FFFF);
+                text-shadow: 0 0 8px var(--theme-color, #00FFFF);
             }
         }
         
@@ -97,10 +99,10 @@
             width: 40px;
             height: 40px;
             background-color: rgba(0, 0, 0, 0.5);
-            border: 2px solid #00FFFF;
+            border: 2px solid var(--theme-color, #00FFFF);
             border-radius: 4px;
             cursor: pointer;
-            box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
+            box-shadow: 0 0 10px var(--theme-color, #00FFFF), inset 0 0 5px var(--theme-color, #00FFFF);
             transition: all 0.2s ease;
             z-index: 100;
             animation: uiGlow 2s infinite alternate;
@@ -108,7 +110,7 @@
         
         #pause-btn:hover {
             transform: scale(1.1);
-            box-shadow: 0 0 15px #00FFFF, inset 0 0 10px #00FFFF;
+            box-shadow: 0 0 15px var(--theme-color, #00FFFF), inset 0 0 10px var(--theme-color, #00FFFF);
         }
         
         #pause-btn:active {
@@ -118,10 +120,10 @@
         #pause-btn div {
             width: 5px;
             height: 20px;
-            background-color: #00FFFF;
+            background-color: var(--theme-color, #00FFFF);
             margin: 0 3px;
             border-radius: 2px;
-            box-shadow: 0 0 5px #00FFFF;
+            box-shadow: 0 0 5px var(--theme-color, #00FFFF);
         }
         
         #game-over {
@@ -131,12 +133,13 @@
             transform: translate(-50%, -50%);
             text-align: center;
             background-color: rgba(0, 0, 0, 0.8);
-            border: 2px solid #00FFFF;
+            border: 2px solid var(--theme-color, #00FFFF);
             border-radius: 8px;
             padding: 20px 40px;
-            box-shadow: 0 0 20px #00FFFF, inset 0 0 10px #00FFFF;
+            box-shadow: 0 0 20px var(--theme-color, #00FFFF), inset 0 0 10px var(--theme-color, #00FFFF);
             display: none;
             z-index: 20;
+            color: var(--theme-color, #00FFFF);
         }
         
         #game-over h2 {
@@ -144,15 +147,15 @@
             margin-bottom: 20px;
             text-transform: uppercase;
             letter-spacing: 2px;
-            text-shadow: 0 0 10px #00FFFF;
+            text-shadow: 0 0 10px var(--theme-color, #00FFFF);
             animation: neonPulse 1.5s infinite alternate;
         }
         
         #retry-btn {
             display: inline-block;
             background-color: transparent;
-            color: #00FFFF;
-            border: 2px solid #00FFFF;
+            color: var(--theme-color, #00FFFF);
+            border: 2px solid var(--theme-color, #00FFFF);
             border-radius: 4px;
             padding: 10px 20px;
             font-family: 'Orbitron', sans-serif;
@@ -160,8 +163,8 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: pointer;
-            box-shadow: 0 0 10px #00FFFF;
-            text-shadow: 0 0 5px #00FFFF;
+            box-shadow: 0 0 10px var(--theme-color, #00FFFF);
+            text-shadow: 0 0 5px var(--theme-color, #00FFFF);
             transition: all 0.2s ease;
             margin-top: 10px;
         }
@@ -169,7 +172,7 @@
         #retry-btn:hover {
             background-color: rgba(0, 255, 255, 0.2);
             transform: scale(1.1);
-            box-shadow: 0 0 15px #00FFFF;
+            box-shadow: 0 0 15px var(--theme-color, #00FFFF);
         }
         
         #retry-btn:active {
@@ -178,10 +181,10 @@
         
         @keyframes neonPulse {
             from {
-                text-shadow: 0 0 5px #00FFFF, 0 0 10px #00FFFF;
+                text-shadow: 0 0 5px var(--theme-color, #00FFFF), 0 0 10px var(--theme-color, #00FFFF);
             }
             to {
-                text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF, 0 0 30px #00FFFF;
+                text-shadow: 0 0 10px var(--theme-color, #00FFFF), 0 0 20px var(--theme-color, #00FFFF), 0 0 30px var(--theme-color, #00FFFF);
             }
         }
         
@@ -202,6 +205,11 @@
             border-radius: 4px;
             z-index: 9999;
             display: none;
+        }
+        
+        /* Dynamic theme colors */
+        :root {
+            --theme-color: #00FFFF;
         }
     </style>
 </head>
@@ -1038,6 +1046,9 @@
                         // Create level
                         this.createLevel();
                         
+                        // Initialize UI with correct theme colors
+                        this.updateUITheme();
+                        
                         // Start animation loop
                         this.isRunning = true;
                         this.lastTime = performance.now();
@@ -1355,6 +1366,9 @@
                     // Update scene background to match theme
                     this.scene.background = new THREE.Color(theme.background);
                     
+                    // Update UI colors to match the current theme
+                    this.updateUITheme();
+                    
                     // Create ground - darker with bright outline like in the image
                     const groundGeometry = new THREE.BoxGeometry(100, 0.5, 1);
                     const groundMaterial = new THREE.MeshBasicMaterial({ 
@@ -1506,8 +1520,10 @@
                             // Get the character at this position
                             const char = rows[invertedRow][col];
                             
-                            // Calculate y position - ensure everything starts from the ground level up
-                            const yPos = this.groundY + 0.5 + row * tileSize;
+                            // Calculate y position with proper offset to ensure platforms are above floor
+                            // For row 0 (ground level), we position at groundY + 1.0 (0.5 for ground height + 0.5 for platform half-height)
+                            // This ensures a platform at the lowest row doesn't overlap with the floor
+                            const yPos = this.groundY + 1.0 + row * tileSize;
                             
                             // Track spike positions
                             if (char === '^') {
@@ -1535,8 +1551,8 @@
                             // Get the character at this position
                             const char = rows[invertedRow][col];
                             
-                            // Calculate y position - ensure everything starts from the ground level up
-                            const yPos = this.groundY + 0.5 + row * tileSize;
+                            // Calculate y position with proper offset to ensure platforms are above floor
+                            const yPos = this.groundY + 1.0 + row * tileSize;
                             
                             // Skip spike creation here as we'll handle it separately
                             if (char !== '^') {
@@ -1642,6 +1658,7 @@
                     // Update UI
                     this.updateScoreDisplay();
                     this.updateLevelDisplay();
+                    this.updateUITheme(); // Ensure UI theme is updated
                 }
                 
                 animate() {
@@ -1908,6 +1925,53 @@
                         void levelDisplay.offsetWidth; // Trigger reflow
                         levelDisplay.style.animation = 'uiGlow 2s infinite alternate, levelUpdate 0.5s';
                     }
+                    
+                    // Update UI colors to match current theme
+                    this.updateUITheme();
+                }
+                
+                // Update UI elements to match the current theme
+                updateUITheme() {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Convert theme color to CSS hex color
+                    const themeColor = '#' + theme.platformEdge.toString(16).padStart(6, '0');
+                    
+                    // Update score display
+                    const scoreDisplay = document.getElementById('score-display');
+                    if (scoreDisplay) {
+                        scoreDisplay.style.borderColor = themeColor;
+                        scoreDisplay.style.boxShadow = `0 0 10px ${themeColor}, inset 0 0 5px ${themeColor}`;
+                        scoreDisplay.style.textShadow = `0 0 5px ${themeColor}`;
+                    }
+                    
+                    // Update level display
+                    const levelDisplay = document.getElementById('level-display');
+                    if (levelDisplay) {
+                        levelDisplay.style.borderColor = themeColor;
+                        levelDisplay.style.boxShadow = `0 0 10px ${themeColor}, inset 0 0 5px ${themeColor}`;
+                        levelDisplay.style.textShadow = `0 0 5px ${themeColor}`;
+                        levelDisplay.style.color = themeColor;
+                    }
+                    
+                    // Update pause button
+                    const pauseBtn = document.getElementById('pause-btn');
+                    if (pauseBtn) {
+                        pauseBtn.style.borderColor = themeColor;
+                        pauseBtn.style.boxShadow = `0 0 10px ${themeColor}, inset 0 0 5px ${themeColor}`;
+                        
+                        // Update pause button bars
+                        const pauseBars = pauseBtn.querySelectorAll('div');
+                        pauseBars.forEach(bar => {
+                            bar.style.backgroundColor = themeColor;
+                            bar.style.boxShadow = `0 0 5px ${themeColor}`;
+                        });
+                    }
+                    
+                    // Update the keyframes animation dynamically using CSS variables
+                    document.documentElement.style.setProperty('--theme-color', themeColor);
                 }
                 
                 gameOver() {
@@ -2288,8 +2352,19 @@
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
                     
+                    // Check if this position would place the object too close to or below the floor
+                    // For platforms, we need to check based on their height
+                    const platformHeight = 1; // Standard platform height
+                    const minYPosition = this.groundY + 0.5 + platformHeight/2;
+                    
                     switch (type) {
                         case 'B': // Block/Platform
+                            // Skip creating platform if it would overlap with floor
+                            if (y - platformHeight/2 <= this.groundY + 0.5) {
+                                // Skip this platform as it would overlap with the floor
+                                return;
+                            }
+                            
                             const platformGeometry = new THREE.BoxGeometry(2, 1, 1);
                             const platformMaterial = new THREE.MeshBasicMaterial({ 
                                 color: theme.platform, 
@@ -2351,6 +2426,12 @@
                             break;
                             
                         case 'J': // Jump pad
+                            // Skip creating jump pad if it would overlap with floor
+                            if (y - 0.25 <= this.groundY + 0.5) {
+                                // Skip this jump pad
+                                return;
+                            }
+                            
                             const jumpPadGeometry = new THREE.BoxGeometry(1.5, 0.5, 1);
                             const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
                                 color: theme.collectible,
