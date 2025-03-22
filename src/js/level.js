@@ -112,7 +112,7 @@ export class Level {
     createBackgroundGrid() {
         // Create a grid pattern in the background
         const gridSize = 200; // Increased from 100 to cover more area
-        const lineCount = 20; // Increased from 10 for more grid lines
+        const lineCount = 40; // Increased from 20 to 40 for more grid lines
         const gridGroup = new THREE.Group();
         
         // Horizontal lines
@@ -122,7 +122,7 @@ export class Level {
             const lineMaterial = new THREE.MeshBasicMaterial({
                 color: this.colors.platforms,
                 transparent: true,
-                opacity: 0.1
+                opacity: 0.15 // Increased from 0.1 for better visibility
             });
             
             const line = new THREE.Mesh(lineGeometry, lineMaterial);
@@ -137,12 +137,44 @@ export class Level {
             const lineMaterial = new THREE.MeshBasicMaterial({
                 color: this.colors.platforms,
                 transparent: true,
-                opacity: 0.1
+                opacity: 0.15 // Increased from 0.1 for better visibility
             });
             
             const line = new THREE.Mesh(lineGeometry, lineMaterial);
             line.position.set(x, 0, -5);
             gridGroup.add(line);
+        }
+        
+        // Add diagonal grid lines for a more complete grid effect
+        const diagonalLineCount = 30; // Adding diagonal grid lines
+        for (let i = 0; i <= diagonalLineCount; i++) {
+            // Calculate diagonal positions from top-left to bottom-right
+            const pos = (i / diagonalLineCount) * gridSize * 1.414 - gridSize * 0.707;
+            const lineGeometry = new THREE.BufferGeometry();
+            const points = [];
+            
+            // Create diagonal line points
+            const startX = pos - gridSize/2;
+            const startY = gridSize/2;
+            const endX = pos + gridSize/2;
+            const endY = -gridSize/2;
+            
+            // Limit the lines to the grid area
+            if (startX < gridSize/2 && endX > -gridSize/2) {
+                points.push(
+                    new THREE.Vector3(Math.max(startX, -gridSize/2), Math.min(startY, gridSize/2), -5),
+                    new THREE.Vector3(Math.min(endX, gridSize/2), Math.max(endY, -gridSize/2), -5)
+                );
+                
+                lineGeometry.setFromPoints(points);
+                const lineMaterial = new THREE.LineBasicMaterial({
+                    color: this.colors.platforms,
+                    transparent: true,
+                    opacity: 0.1 // Slightly less visible than the main grid
+                });
+                const line = new THREE.Line(lineGeometry, lineMaterial);
+                gridGroup.add(line);
+            }
         }
         
         this.scene.add(gridGroup);
@@ -249,8 +281,8 @@ export class Level {
             // Each group has 3-5 spikes
             const spikeCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 spikes
             
-            // Spacing between spikes in a group
-            const spikeSpacing = 0.7; // Close together
+            // Spacing between spikes in a group - making this closer
+            const spikeSpacing = 0.4; // Reduced from 0.7 to make spikes closer together
             
             // Calculate start position to center the group
             const groupStartX = groupX - ((spikeCount - 1) * spikeSpacing) / 2;
@@ -259,7 +291,7 @@ export class Level {
                 const x = groupStartX + (i * spikeSpacing);
                 // Place spikes exactly at ground level (no floating)
                 const y = this.groundY + 0.15; // Just a tiny bit above ground for visual clarity
-                const size = 0.5 + Math.random() * 0.3; // Smaller spike sizes (was 0.8 + random * 0.6)
+                const size = 0.3 + Math.random() * 0.2; // Smaller spike sizes (was 0.5 + random * 0.3)
                 
                 const spike = this.levelBuilder.createSpike(x, y, size);
                 this.obstacles.push(spike);
@@ -295,7 +327,7 @@ export class Level {
             if (Math.random() > 0.5) {
                 // Create a small group of spikes (2-3) on the platform
                 const spikeCount = Math.floor(Math.random() * 2) + 2; // 2 to 3 spikes
-                const spikeSpacing = 0.6;
+                const spikeSpacing = 0.4; // Reduced from 0.6 to make spikes closer together
                 
                 // Center the spikes on the platform
                 const groupStartX = x - ((spikeCount - 1) * spikeSpacing) / 2;
@@ -304,7 +336,7 @@ export class Level {
                     const spikeX = groupStartX + (j * spikeSpacing);
                     // Place spikes directly on top of the platform
                     const spikeY = this.groundY + height + 0.9;
-                    const spikeSize = 0.4 + Math.random() * 0.2; // Smaller spikes (was 0.7 + random * 0.3)
+                    const spikeSize = 0.25 + Math.random() * 0.15; // Smaller spikes (was 0.4 + random * 0.2)
                     
                     const spike = this.levelBuilder.createSpike(spikeX, spikeY, spikeSize);
                     
@@ -357,7 +389,7 @@ export class Level {
         
         // Add a spike group
         const spikeCount = Math.floor(Math.random() * 3) + 3; // 3 to 5 spikes in a group
-        const spikeSpacing = 0.7; // Close together
+        const spikeSpacing = 0.4; // Close together
         const groupX = xPosition - this.levelSegmentWidth / 4;
         
         // Calculate start position to center the group
@@ -367,7 +399,7 @@ export class Level {
             const x = groupStartX + (i * spikeSpacing);
             // Place spikes exactly at ground level
             const y = this.groundY + 0.15;
-            const size = 0.5 + Math.random() * 0.2; // Smaller spikes (was 0.8 + random * 0.4)
+            const size = 0.3 + Math.random() * 0.2; // Smaller spikes (was 0.5 + random * 0.3)
             
             const spike = this.levelBuilder.createSpike(x, y, size);
             this.obstacles.push(spike);
@@ -391,7 +423,7 @@ export class Level {
         
         // Add a spike group on top of the platform
         const spikeCount = Math.floor(Math.random() * 2) + 3; // 3 to 4 spikes
-        const spikeSpacing = 0.6;
+        const spikeSpacing = 0.4; // Reduced from 0.6 to make spikes closer together
         
         // Calculate start position to center the group on the platform
         const groupStartX = xPosition - ((spikeCount - 1) * spikeSpacing) / 2;
@@ -400,7 +432,7 @@ export class Level {
             const x = groupStartX + (i * spikeSpacing);
             // Place spikes directly on the platform
             const y = platformY + 0.15 + platform.height/2;
-            const size = 0.5; // Smaller spikes (was 0.7)
+            const size = 0.3; // Smaller spikes (was 0.5)
             
             const spike = this.levelBuilder.createSpike(x, y, size);
             this.obstacles.push(spike);
@@ -479,12 +511,12 @@ export class Level {
             // Add spike on some steps (less frequently)
             if (Math.random() > 0.8) {
                 const spikeCount = Math.floor(Math.random() * 2) + 1; // 1-2 spikes
-                const spikeSpacing = 0.5;
+                const spikeSpacing = 0.3; // Reduced from 0.5 to make spikes closer together
                 
                 for (let j = 0; j < spikeCount; j++) {
                     const spikeX = x + (j - (spikeCount - 1) / 2) * spikeSpacing;
                     const spikeY = y + (platHeight / 2) + 0.05; // On top of platform
-                    const spikeSize = 0.3 + Math.random() * 0.2; // Smaller spikes (was 0.5 + random * 0.2)
+                    const spikeSize = 0.2 + Math.random() * 0.15; // Smaller spikes (was 0.3 + random * 0.2)
                     
                     const spike = this.levelBuilder.createSpike(spikeX, spikeY, spikeSize);
                     
@@ -537,11 +569,11 @@ export class Level {
         
         // Generate spikes in the gap
         const spikeCount = Math.floor(Math.random() * 3) + 3; // 3-5 spikes in a group (more defined count)
-        const spikeSpacing = gapWidth / spikeCount;
+        const spikeSpacing = gapWidth / (spikeCount + 1); // Adjusted spacing calculation
         
         for (let i = 0; i < spikeCount; i++) {
-            const spikeX = xPosition - gapWidth/2 + (i + 0.5) * spikeSpacing;
-            const spike = this.levelBuilder.createSpike(spikeX, this.groundY + 0.15, 0.5); // Smaller spikes (was 0.7)
+            const spikeX = xPosition - gapWidth/2 + (i + 1) * spikeSpacing;
+            const spike = this.levelBuilder.createSpike(spikeX, this.groundY + 0.15, 0.3); // Smaller spikes (was 0.5)
             this.obstacles.push(spike);
         }
     }
@@ -866,5 +898,116 @@ export class Level {
 
     getAllPortals() {
         return this.portals;
+    }
+
+    dispose() {
+        // Remove all objects from the scene
+        if (this.floor) {
+            this.scene.remove(this.floor);
+            this.floor.geometry.dispose();
+            this.floor.material.dispose();
+        }
+        
+        // Remove all obstacles
+        if (this.obstacles && this.obstacles.length) {
+            this.obstacles.forEach(obstacle => {
+                this.scene.remove(obstacle);
+                if (obstacle.geometry) obstacle.geometry.dispose();
+                if (obstacle.material) obstacle.material.dispose();
+            });
+            this.obstacles = [];
+        }
+        
+        // Remove all collectible items
+        if (this.collectibles && this.collectibles.length) {
+            this.collectibles.forEach(item => {
+                this.scene.remove(item);
+                if (item.geometry) item.geometry.dispose();
+                if (item.material) item.material.dispose();
+            });
+            this.collectibles = [];
+        }
+        
+        // Remove portal if it exists
+        if (this.portalObject) {
+            this.scene.remove(this.portalObject);
+            if (this.portalObject.geometry) this.portalObject.geometry.dispose();
+            if (this.portalObject.material) this.portalObject.material.dispose();
+            this.portalObject = null;
+        }
+        
+        // Reset collected items count
+        this.collectedItems = 0;
+        this.totalItems = 0;
+        this.portalExists = false;
+        
+        console.log("Level disposed");
+    }
+
+    setLevelData(levelData) {
+        console.log("Setting level data:", levelData);
+        
+        // Create floor from level data
+        if (levelData.floor) {
+            this.createFloor(levelData.floor.width, levelData.floor.depth);
+        } else {
+            // Default floor if not specified
+            this.createFloor(50, 50);
+        }
+        
+        // Create obstacles
+        if (levelData.obstacles && levelData.obstacles.length) {
+            levelData.obstacles.forEach(obstacleData => {
+                const obstacle = this.levelBuilder.createObstacle(
+                    obstacleData.type || 'box',
+                    obstacleData.width || 2, 
+                    obstacleData.height || 2, 
+                    obstacleData.depth || 2
+                );
+                
+                // Set position
+                obstacle.position.set(
+                    obstacleData.x || 0,
+                    obstacleData.y || 0,
+                    obstacleData.z || 0
+                );
+                
+                // Add to scene and tracking array
+                this.scene.add(obstacle);
+                this.obstacles.push(obstacle);
+            });
+        }
+        
+        // Create collectibles
+        if (levelData.collectibles && levelData.collectibles.length) {
+            levelData.collectibles.forEach(itemData => {
+                const collectible = this.levelBuilder.createCollectible();
+                
+                // Set position
+                collectible.position.set(
+                    itemData.x || 0,
+                    itemData.y || 0,
+                    itemData.z || 1 // Default slightly above ground
+                );
+                
+                // Add to scene and tracking array
+                this.scene.add(collectible);
+                this.collectibles.push(collectible);
+            });
+            
+            // Update collectibles count
+            this.totalItems = this.collectibles.length;
+        }
+        
+        // Create portal if specified
+        if (levelData.portal) {
+            this.createPortal(
+                levelData.portal.x || 0,
+                levelData.portal.y || 0,
+                levelData.portal.z || 0.5
+            );
+        }
+        
+        console.log("Level data set successfully");
     }
 } 

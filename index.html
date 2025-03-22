@@ -531,19 +531,34 @@
                 createGrid() {
                     // Grid size and properties
                     const gridSize = 1000;
-                    const gridDivisions = 100;
+                    const gridDivisions = 200; // Increased from 100 for more grid lines
                     const gridColor = 0x1144AA; // Darker blue grid lines to match image
                     
                     // Create grid with lines
                     const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
                     gridHelper.position.y = this.groundY - 0.4; // Slightly below ground
                     gridHelper.material.transparent = true;
-                    gridHelper.material.opacity = 0.2;
+                    gridHelper.material.opacity = 0.3; // Increased from 0.2 for better visibility
                     gridHelper.material.blending = THREE.AdditiveBlending;
                     this.scene.add(gridHelper);
                     
                     // Rotate grid to make it horizontal
                     gridHelper.rotation.x = Math.PI / 2;
+                    
+                    // Add a second grid with different sizing for a more complex grid pattern
+                    const secondaryGridSize = 500;
+                    const secondaryGridDivisions = 50;
+                    const secondaryGridColor = 0x2266CC; // Slightly brighter blue for contrast
+                    
+                    const secondaryGridHelper = new THREE.GridHelper(secondaryGridSize, secondaryGridDivisions, secondaryGridColor, secondaryGridColor);
+                    secondaryGridHelper.position.y = this.groundY - 0.39; // Slightly above the main grid
+                    secondaryGridHelper.material.transparent = true;
+                    secondaryGridHelper.material.opacity = 0.4;
+                    secondaryGridHelper.material.blending = THREE.AdditiveBlending;
+                    this.scene.add(secondaryGridHelper);
+                    
+                    // Rotate the secondary grid
+                    secondaryGridHelper.rotation.x = Math.PI / 2;
                     
                     // Add a plane with a grid texture for additional effect
                     const gridPlaneGeometry = new THREE.PlaneGeometry(gridSize, gridSize);

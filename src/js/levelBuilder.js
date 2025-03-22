@@ -262,41 +262,57 @@ export class LevelBuilder {
         }
         
         // Create stronger outer glow for platforms - first layer
-        const glowSize = 0.8; // Increased glow size further (was 0.6)
+        const glowSize = 1.0; // Increased from 0.8 for more glow
         const glowGeometry = new THREE.PlaneGeometry(width + glowSize, height + glowSize);
         const glowMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.platforms,
             transparent: true,
-            opacity: 0.9, // Increased opacity for more visibility (was 0.8)
-            side: THREE.DoubleSide
+            opacity: 0.95, // Increased from 0.9 for more visibility
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending // Added for enhanced glow effect
         });
         const glow = new THREE.Mesh(glowGeometry, glowMaterial);
         glow.position.z = -0.01;
         platformGroup.add(glow);
         
         // Create second, larger glow for more intense effect
-        const outerGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 4, height + glowSize * 4); // Increased from 3.5 to 4
+        const outerGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 5, height + glowSize * 5); // Increased from 4 to 5
         const outerGlowMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.platforms,
             transparent: true,
-            opacity: 0.6, // Increased opacity (was 0.5)
-            side: THREE.DoubleSide
+            opacity: 0.7, // Increased from 0.6
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending // Added for enhanced glow effect
         });
         const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
         outerGlow.position.z = -0.02;
         platformGroup.add(outerGlow);
         
         // Add a third, very subtle outer glow for extended effect
-        const farGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 7, height + glowSize * 7); // Increased from 6 to 7
+        const farGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 8.5, height + glowSize * 8.5); // Increased from 7 to 8.5
         const farGlowMaterial = new THREE.MeshBasicMaterial({
             color: this.colors.platforms,
             transparent: true,
-            opacity: 0.3, // Increased opacity (was 0.25)
-            side: THREE.DoubleSide
+            opacity: 0.4, // Increased from 0.3
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending // Added for enhanced glow effect
         });
         const farGlow = new THREE.Mesh(farGlowGeometry, farGlowMaterial);
         farGlow.position.z = -0.03;
         platformGroup.add(farGlow);
+        
+        // Add a fourth, extremely subtle outer glow for maximum bloom effect
+        const bloomGlowGeometry = new THREE.PlaneGeometry(width + glowSize * 12, height + glowSize * 12); // New larger bloom
+        const bloomGlowMaterial = new THREE.MeshBasicMaterial({
+            color: this.colors.platforms,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const bloomGlow = new THREE.Mesh(bloomGlowGeometry, bloomGlowMaterial);
+        bloomGlow.position.z = -0.04;
+        platformGroup.add(bloomGlow);
         
         // If it's a jump pad, add a special indicator
         if (isJumpPad) {

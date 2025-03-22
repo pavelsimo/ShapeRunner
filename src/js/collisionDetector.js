@@ -281,8 +281,8 @@ export class CollisionDetector {
         if (!this.lastPortalCheck) this.lastPortalCheck = 0;
         
         // Check if player is close enough to the portal
-        // Increased detection radius for more reliable portal detection
-        if (distance < 3.5 && now - this.lastPortalCheck > 1000) {
+        // Increased detection radius and reduced cooldown for more reliable portal detection
+        if (distance < 4.0 && now - this.lastPortalCheck > 500) {
             console.log("Portal collision detected! Distance:", distance);
             this.lastPortalCheck = now;
             
@@ -291,6 +291,7 @@ export class CollisionDetector {
                 this.level.game.ui.showLevelMessage("ENTERING PORTAL", 1000);
             }
             
+            // Return true to trigger portal collision in game update
             return true;
         }
         
@@ -506,5 +507,96 @@ export class CollisionDetector {
         };
         
         animateParticles();
+    }
+
+    checkCollectibleCollisions() {
+        const player = this.player.mesh;
+        const collectibles = this.level.collectibles;
+        
+        // Early exit if there are no collectibles
+        if (!collectibles || collectibles.length === 0) return;
+        
+        const collectibleRadius = 0.5; // Approximate radius of collectible
+        const playerRadius = 0.5; // Approximate radius of player
+        
+        // Array to track which collectibles need to be removed
+        const toRemove = [];
+        
+        // Check each collectible for collision with player
+        collectibles.forEach((collectible, index) => {
+            // Skip if collectible is already marked for removal
+            if (collectible.markedForRemoval) return;
+            
+            // Get positions
+            const playerX = player.position.x;
+            const playerY = player.position.y;
+            const collectibleX = collectible.position.x;
+            const collectibleY = collectible.position.y;
+            
+            // Calculate distance between player and collectible (2D for simplicity)
+            const dx = playerX - collectibleX;
+            const dy = playerY - collectibleY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // If distance is less than sum of radii, collision occurred
+            if (distance < (playerRadius + collectibleRadius)) {
+                console.log("Collectible collected!");
+                
+                // Mark collectible for removal
+                collectible.markedForRemoval = true;
+                toRemove.push(index);
+                
+                // Create collection effect
+                this.createCollectionEffect(collectible.position);
+                
+                // Update level collected items count
+                this.level.collectedItems++;
+                
+                // Update game score if game reference exists
+                if (this.level.game) {
+                    this.level.game.score += 100;
+                    this.level.game.updateScoreDisplay();
+                    
+                    // Show temporary score popup if UI exists
+                    if (this.level.game.ui) {
+                        this.level.game.ui.showScorePopup("+100", collectible.position);
+                    }
+                }
+                
+                // Check if all items are collected, make portal appear if it doesn't exist yet
+                if (this.level.collectedItems === this.level.totalItems && !this.level.portalExists) {
+                    console.log("All items collected! Creating portal...");
+                    this.level.createPortal(15, 15, 0.5);
+                    
+                    if (this.level.game && this.level.game.ui) {
+                        this.level.game.ui.showLevelMessage("PORTAL OPENED!", 2000);
+                    }
+                }
+            }
+        });
+        
+        // Remove collected items from scene and array (in reverse order to avoid index issues)
+        for (let i = toRemove.length - 1; i >= 0; i--) {
+            const index = toRemove[i];
+            const collectible = collectibles[index];
+            
+            // Remove from scene
+            this.level.scene.remove(collectible);
+            
+            // Dispose of geometry and material
+            if (collectible.geometry) collectible.geometry.dispose();
+            if (collectible.material) collectible.material.dispose();
+            
+            // Remove from array
+            collectibles.splice(index, 1);
+        }
+        
+        return toRemove.length > 0; // Return true if any collectibles were collected
+    }
+
+    createCollectionEffect(position) {
+        // Simple visual feedback for collection
+        // This would typically be a particle effect, but we'll just log for now
+        console.log("Collection effect at", position);
     }
 } 

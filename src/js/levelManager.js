@@ -150,14 +150,21 @@ export class LevelManager {
         // Remember these titles for next time
         this.previousTitles = [...selectedTitles];
         
-        // Get a theme from one of the selected titles or create a default theme
-        let theme = null;
-        // Try to find a theme in the selected titles
-        for (const title of [startTitle, ...selectedTitles, endTitle]) {
+        // MODIFIED: Theme selection - Make theme part of the level instead of the title
+        // Get all available themes from title files
+        const availableThemes = [];
+        for (const title of [startTitle, ...availableTitles, endTitle]) {
             if (title.theme) {
-                theme = title.theme;
-                break;
+                availableThemes.push(title.theme);
             }
+        }
+        
+        // Select a theme based on level number to ensure consistency within a level
+        let theme = null;
+        if (availableThemes.length > 0) {
+            // Use a consistent theme index for the same level number
+            const themeIndex = (levelNumber - 1) % availableThemes.length;
+            theme = availableThemes[themeIndex];
         }
         
         // If no theme was found, use a default theme

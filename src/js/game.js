@@ -7,13 +7,21 @@ import { GameUI } from './ui.js';
 import { LevelManager } from './levelManager.js';
 
 export class Game {
-    constructor() {
+    constructor(scene, camera, renderer) {
+        this.scene = scene;
+        this.camera = camera;
+        this.renderer = renderer;
+        
+        // Game state
         this.isRunning = false;
         this.isPaused = false;
         this.isGameOver = false;
-        this.gameSpeed = 10;
+        this.score = 0;
         this.distance = 0;
-        this.currentLevel = 1;
+        this.currentLevel = 0;
+        this.gameSpeed = 10;
+        
+        // Initialize color schemes
         this.colorSchemes = {
             purple: {
                 background: 0x220044,
@@ -52,31 +60,46 @@ export class Game {
             }
         };
         this.availableColorSchemes = Object.keys(this.colorSchemes);
-        this.currentColorScheme = 'purple';
+        this.currentColorScheme = this.availableColorSchemes[
+            Math.floor(Math.random() * this.availableColorSchemes.length)
+        ];
         
-        // Create level manager
-        this.levelManager = new LevelManager();
+        console.log("Starting with color scheme:", this.currentColorScheme);
         
-        // Set up event listeners
-        window.addEventListener('keydown', this.handleKeyDown.bind(this));
-        window.addEventListener('keyup', this.handleKeyUp.bind(this));
-        window.addEventListener('resize', this.onWindowResize.bind(this));
+        // Create gradient background with the selected color scheme
+        this.createGradientBackground(this.colorSchemes[this.currentColorScheme].background);
         
-        // UI elements
-        this.pauseBtn = document.getElementById('pause-btn');
-        this.pauseBtn.addEventListener('click', this.togglePause.bind(this));
+        // Create level builder with the selected color scheme
+        this.levelBuilder = new LevelBuilder(this.scene, this.colorSchemes[this.currentColorScheme]);
         
-        this.gameOverUI = document.getElementById('game-over');
-        this.retryBtn = document.getElementById('retry-btn');
-        this.retryBtn.addEventListener('click', this.restart.bind(this));
-        
+        // Create UI
         this.ui = new GameUI(this);
         
-        // Initialize the game
-        this.initialize();
+        // Update UI colors
+        this.updateUIColors();
         
-        // Start the game loop
-        this.startGameLoop();
+        // Create player
+        this.player = new Player(this.scene, this.colorSchemes[this.currentColorScheme]);
+        
+        // Initialize level designs
+        this.initializeLevels();
+        
+        // Start with first level
+        this.loadLevel(1);
+        
+        // Setup collision detection
+        this.collisionDetector = new CollisionDetector(this.player, this.level);
+        
+        // Setup keyboard input
+        this.setupKeyboardInput();
+        
+        // Time tracking
+        this.lastFrameTime = performance.now();
+        
+        // Bind update method to game instance
+        this.update = this.update.bind(this);
+        
+        console.log("Game initialized");
     }
 
     async initialize() {
@@ -168,24 +191,40 @@ export class Game {
     }
 
     update(deltaTime) {
-        if (this.isPaused || !this.isRunning) return;
-        
-        // Move level elements
-        this.level.update(deltaTime, this.gameSpeed);
+        if (!this.isRunning || this.isPaused) return;
         
         // Update player
         this.player.update(deltaTime);
         
-        // Check for collisions and portal
-        this.checkGameOver();
+        // Check for collisions
+        const collision = this.collisionDetector.checkObstacleCollisions();
+        if (collision) {
+            console.log("Collision detected!");
+            // Handle collision (e.g., game over)
+            this.gameOver();
+            return;
+        }
+        
+        // Check for collectible collisions
+        this.collisionDetector.checkCollectibleCollisions();
+        
+        // Check for portal collision
+        const portalCollision = this.collisionDetector.checkPortalCollision();
+        if (portalCollision) {
+            // Player entered portal, go to next level
+            this.handlePortalCollision();
+        }
         
         // Update camera to follow player
-        this.camera.position.x = this.player.mesh.position.x;
+        this.updateCamera();
         
-        // Update score
+        // Update distance traveled
         this.distance += this.gameSpeed * deltaTime;
-
-        this.ui.update();
+        
+        // Update UI
+        if (this.ui) {
+            this.ui.updateDistance(Math.floor(this.distance));
+        }
     }
 
     handleKeyDown(event) {
@@ -204,36 +243,21 @@ export class Game {
 
     togglePause() {
         this.isPaused = !this.isPaused;
+        console.log(this.isPaused ? "Game paused" : "Game resumed");
         
-        // Update UI for pause state
-        const pauseBtn = document.getElementById('pause-btn');
-        if (pauseBtn) {
-            if (this.isPaused) {
-                // Change to play button (triangle shape)
-                pauseBtn.innerHTML = '<div class="play-icon"></div>';
-                const playIcon = pauseBtn.querySelector('.play-icon');
-                if (playIcon) {
-                    playIcon.style.width = '0';
-                    playIcon.style.height = '0';
-                    playIcon.style.borderTop = '10px solid transparent';
-                    playIcon.style.borderBottom = '10px solid transparent';
-                    playIcon.style.borderLeft = '15px solid ' + this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
-                    playIcon.style.boxShadow = '0 0 5px ' + this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
-                    playIcon.style.marginLeft = '3px';
-                }
-            } else {
-                // Change back to pause button (two vertical lines)
-                pauseBtn.innerHTML = '<div></div><div></div>';
-                const pauseBars = pauseBtn.querySelectorAll('div');
-                const accentColor = this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
-                pauseBars.forEach(bar => {
-                    bar.style.width = '5px';
-                    bar.style.height = '20px';
-                    bar.style.backgroundColor = accentColor;
-                    bar.style.margin = '0 3px';
-                    bar.style.boxShadow = '0 0 5px ' + accentColor;
-                    bar.style.borderRadius = '2px';
-                });
+        // Update UI if needed
+        if (this.ui && this.ui.pauseBtn) {
+            this.ui.pauseBtn.textContent = this.isPaused ? "RESUME" : "PAUSE";
+        }
+        
+        // Show pause message
+        if (this.ui && this.isPaused) {
+            this.ui.showLevelMessage("PAUSED", 0); // 0 duration means show until manually hidden
+        } else if (this.ui) {
+            // Hide the message when unpausing
+            if (this.ui.levelMessage) {
+                this.ui.levelMessage.style.opacity = '0';
+                this.ui.levelMessage.style.transform = 'translate(-50%, -50%) scale(0.8)';
             }
         }
     }
@@ -253,48 +277,22 @@ export class Game {
     }
 
     restart() {
-        // Hide game over UI immediately
-        this.ui.hideGameOver();
+        console.log("Restarting game...");
+        // Reset game state
+        this.score = 0;
+        this.currentLevel = 1;
+        this.updateScoreDisplay();
         
-        // Clear the existing level
+        // Remove current level
         if (this.level) {
-            this.level.clear();
+            this.level.dispose();
         }
         
-        // Reset player position
-        this.player.reset();
+        // Start from the first level
+        this.loadLevel(1);
         
-        // Reset camera position
-        this.camera.position.x = 0;
-        this.camera.position.y = 0;
-        
-        // Create a new level with current color scheme
-        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
-        
-        // Use random predefined level designs
-        this.loadRandomLevelDesign();
-        
-        // Setup collision detection
-        this.collisionDetector = new CollisionDetector(this.player, this.level);
-        
-        // Reset game state
-        this.gameSpeed = 10;
-        this.distance = 0;
-        this.isGameOver = false;
-        this.isPaused = false;
-        this.isRunning = true; // Ensure the game is running again
-        
-        // Reset time for game loop
-        this.lastFrameTime = performance.now();
-        
-        // Force an immediate render
-        this.renderer.render(this.scene, this.camera);
-        
-        // Force update on next frame
-        requestAnimationFrame(() => {
-            this.update(0.016); // Force an update with a small time step
-            this.renderer.render(this.scene, this.camera);
-        });
+        // Show restart message
+        this.ui.showLevelMessage("GAME RESTARTED", 2000);
     }
 
     // Use a random predefined level design
@@ -377,82 +375,48 @@ export class Game {
     }
 
     nextLevel() {
-        console.log("Starting next level transition!");
-        
-        // Create teleportation effect
-        this.createTeleportEffect();
-        
-        // Increment level counter
+        // Increment current level
         this.currentLevel++;
-        console.log("Moving to level:", this.currentLevel);
         
-        // Select a new color scheme different from the current one
-        const previousColorScheme = this.currentColorScheme;
-        
-        // Force a distinct color theme change by rotating through available schemes
-        // This ensures each level has a noticeably different appearance
-        const availableSchemes = [...this.availableColorSchemes];
-        const currentIndex = availableSchemes.indexOf(this.currentColorScheme);
-        
-        // Force a new color scheme - ensure it's different by picking one at least 2 positions away
-        let nextIndex;
-        do {
-            nextIndex = Math.floor(Math.random() * availableSchemes.length);
-        } while (nextIndex === currentIndex || Math.abs(nextIndex - currentIndex) < 2);
-        
-        this.currentColorScheme = availableSchemes[nextIndex];
-        
-        console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
-        
-        // Display level transition message
-        this.ui.showLevelMessage(`LEVEL ${this.currentLevel}`, 2000);
-        
-        // Update background with new color scheme using gradient
-        // First remove existing background
-        const existingBackground = this.scene.getObjectByName("background");
-        if (existingBackground) {
-            this.scene.remove(existingBackground);
-            existingBackground.geometry.dispose();
-            existingBackground.material.dispose();
+        // Check if there are more levels
+        if (this.currentLevel <= this.levels.length) {
+            console.log(`Going to level ${this.currentLevel}`);
+            
+            // Dispose of the current level
+            if (this.level) {
+                this.level.dispose();
+            }
+            
+            // Update background with new color scheme using gradient
+            // First remove existing background
+            const existingBackground = this.scene.getObjectByName("background");
+            if (existingBackground) {
+                this.scene.remove(existingBackground);
+                existingBackground.geometry.dispose();
+                existingBackground.material.dispose();
+            }
+            
+            // Create new gradient background
+            this.createGradientBackground(this.colorSchemes[this.currentColorScheme].background);
+            
+            // Update player colors
+            this.player.updateColors(this.colorSchemes[this.currentColorScheme]);
+            
+            // Update UI colors to match new color scheme
+            this.updateUIColors();
+            
+            // Load the next level
+            this.loadLevel(this.currentLevel);
+        } else {
+            console.log("No more levels available");
+            this.ui.showLevelMessage("GAME COMPLETE!", 3000);
         }
-        
-        // Create new gradient background
-        this.createGradientBackground(this.colorSchemes[this.currentColorScheme].background);
-        
-        // Clear existing level
-        this.level.clear();
-        
-        // Create new levelBuilder with new color scheme
-        this.levelBuilder = new LevelBuilder(this.scene, this.colorSchemes[this.currentColorScheme]);
-        
-        // Create new level with new color scheme
-        this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
-        
-        // Load a tile-based level design with forced regeneration
-        this.loadTileBasedLevel();
-        
-        // Update player colors
-        this.player.updateColors(this.colorSchemes[this.currentColorScheme]);
-        
-        // Reset player position but maintain current score
-        this.player.reset();
-        
-        // Update collision detector
-        this.collisionDetector = new CollisionDetector(this.player, this.level);
-        
-        // Speed up slightly with each level
-        this.gameSpeed = 10 + (this.currentLevel - 1) * 0.5;
-        
-        // Update UI colors to match new color scheme
-        this.updateUIColors();
-        
-        console.log("Level transition complete!");
     }
     
-    createTeleportEffect() {
-        // Store player position for the effect
-        const playerX = this.player.mesh.position.x;
-        const playerY = this.player.mesh.position.y;
+    createTeleportEffect(x, y) {
+        // Use provided position or default to player position if not provided
+        const playerX = x !== undefined ? x : this.player.mesh.position.x;
+        const playerY = y !== undefined ? y : this.player.mesh.position.y;
         
         // Get next color scheme to use in the effect
         const nextColorScheme = this.colorSchemes[this.currentColorScheme];
@@ -748,7 +712,71 @@ NOTE:
         if (this.collisionDetector && this.collisionDetector.checkPortalCollision()) {
             // Level completed
             console.log("Portal collision detected! Changing level...");
-            this.nextLevel();
+            this.handlePortalCollision();
+        }
+    }
+
+    handlePortalCollision() {
+        // Check if there's a next level to go to
+        if (this.currentLevel < this.levels.length) {
+            // Create a teleport effect before transitioning
+            this.createTeleportEffect(this.player.mesh.position.x, this.player.mesh.position.y);
+            
+            // Display level completion message
+            const score = this.score;
+            const levelScore = this.currentLevel > 0 && this.levels[this.currentLevel - 1] ? 
+                (this.levels[this.currentLevel - 1].collectedItems || 0) * 100 : 0;
+            this.ui.showLevelMessage(`LEVEL ${this.currentLevel} COMPLETE! +${levelScore}`, 2000);
+            
+            // Check if the next level has a theme
+            const nextLevel = this.levels[this.currentLevel];
+            if (!nextLevel || !nextLevel.theme) {
+                // If next level doesn't have a theme, select a new color scheme different from the current one
+                const previousColorScheme = this.currentColorScheme;
+                
+                // Force a distinct color theme change by rotating through available schemes
+                const availableSchemes = [...this.availableColorSchemes];
+                const currentIndex = availableSchemes.indexOf(this.currentColorScheme);
+                
+                // Force a new color scheme - ensure it's different by picking one at least 2 positions away
+                let nextIndex;
+                do {
+                    nextIndex = Math.floor(Math.random() * availableSchemes.length);
+                } while (nextIndex === currentIndex || Math.abs(nextIndex - currentIndex) < 2);
+                
+                this.currentColorScheme = availableSchemes[nextIndex];
+                
+                console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
+            }
+            
+            // Add a short delay before transitioning to the next level
+            // Ensure the transition happens by forcing it after the timeout
+            this.portalTransitionStarted = true;
+            setTimeout(() => {
+                // Force the transition if it hasn't happened
+                if (this.portalTransitionStarted) {
+                    this.nextLevel();
+                    this.portalTransitionStarted = false;
+                }
+            }, 1000); // Reduced from 1500 for faster transitions
+        } else {
+            // Game complete
+            console.log("Game complete! All levels finished.");
+            this.ui.showLevelMessage("GAME COMPLETE!", 3000);
+            
+            // After a delay, show a restart message
+            setTimeout(() => {
+                this.ui.showLevelMessage("PRESS 'R' TO RESTART", 5000);
+                
+                // Add a one-time event listener for restart
+                const restartHandler = (e) => {
+                    if (e.key.toLowerCase() === 'r') {
+                        document.removeEventListener('keydown', restartHandler);
+                        this.restart();
+                    }
+                };
+                document.addEventListener('keydown', restartHandler);
+            }, 3500);
         }
     }
 
@@ -856,5 +884,177 @@ NOTE:
         backgroundMesh.position.z = -10; // Behind everything
         backgroundMesh.name = "background";
         this.scene.add(backgroundMesh);
+    }
+
+    loadLevel(levelNumber) {
+        console.log(`Loading level ${levelNumber}`);
+        
+        // Update current level
+        this.currentLevel = levelNumber;
+        
+        // Create a new level with the current level design
+        if (this.levels[levelNumber - 1]) {
+            const levelDesign = this.levels[levelNumber - 1];
+            
+            // Update color scheme based on level's theme if available
+            if (levelDesign.theme && this.colorSchemes[levelDesign.theme]) {
+                this.currentColorScheme = levelDesign.theme;
+                console.log(`Using level theme: ${this.currentColorScheme}`);
+                
+                // Update background with level's color scheme
+                // First remove existing background
+                const existingBackground = this.scene.getObjectByName("background");
+                if (existingBackground) {
+                    this.scene.remove(existingBackground);
+                    existingBackground.geometry.dispose();
+                    existingBackground.material.dispose();
+                }
+                
+                // Create new gradient background
+                this.createGradientBackground(this.colorSchemes[this.currentColorScheme].background);
+                
+                // Update player colors
+                this.player.updateColors(this.colorSchemes[this.currentColorScheme]);
+                
+                // Update UI colors
+                this.updateUIColors();
+            }
+            
+            // Create a new level with the current color scheme
+            this.level = new Level(this.scene, this.levelBuilder, this.colorSchemes[this.currentColorScheme], this);
+            
+            // Set the level data
+            this.level.setLevelData(levelDesign);
+            
+            // Reset player position
+            this.player.mesh.position.set(0, 0, 0.5);
+            this.player.reset();
+            
+            // Reset camera
+            this.camera.position.set(0, -10, 10);
+            this.camera.lookAt(0, 0, 0);
+            
+            // Setup collision detection with the new level
+            this.collisionDetector = new CollisionDetector(this.player, this.level);
+            
+            // Show level message
+            this.ui.showLevelMessage(`LEVEL ${levelNumber}`, 2000);
+            
+            // Force an immediate render
+            this.renderer.render(this.scene, this.camera);
+        } else {
+            console.error(`Level ${levelNumber} not found!`);
+        }
+    }
+
+    initializeLevels() {
+        // Create predefined level designs
+        this.levels = [
+            // Level 1 - Simple Introduction
+            {
+                floor: { width: 50, depth: 50 },
+                obstacles: [
+                    { type: 'box', width: 3, height: 2, depth: 2, x: 5, y: 5, z: 1 },
+                    { type: 'box', width: 3, height: 2, depth: 2, x: -5, y: -5, z: 1 },
+                    { type: 'box', width: 2, height: 2, depth: 3, x: -7, y: 7, z: 1.5 }
+                ],
+                collectibles: [
+                    { x: 3, y: 3, z: 1 },
+                    { x: -3, y: -3, z: 1 },
+                    { x: 7, y: -7, z: 1 },
+                    { x: -7, y: 7, z: 3 }
+                ],
+                portal: { x: 10, y: 10, z: 0.5 },
+                theme: 'purple' // Theme for level 1
+            },
+            
+            // Level 2 - More Obstacles
+            {
+                floor: { width: 60, depth: 60 },
+                obstacles: [
+                    { type: 'box', width: 4, height: 3, depth: 2, x: 8, y: 8, z: 1.5 },
+                    { type: 'box', width: 2, height: 4, depth: 2, x: -8, y: -8, z: 1 },
+                    { type: 'box', width: 3, height: 3, depth: 3, x: 0, y: 12, z: 1.5 },
+                    { type: 'box', width: 10, height: 1, depth: 1, x: -12, y: 0, z: 0.5 },
+                    { type: 'box', width: 1, height: 10, depth: 1, x: 12, y: -5, z: 0.5 }
+                ],
+                collectibles: [
+                    { x: 5, y: 5, z: 1 },
+                    { x: -5, y: -5, z: 1 },
+                    { x: 10, y: -10, z: 1 },
+                    { x: -10, y: 10, z: 1 },
+                    { x: 0, y: 15, z: 3 },
+                    { x: 15, y: 0, z: 1 }
+                ],
+                portal: { x: 15, y: 15, z: 0.5 },
+                theme: 'blue' // Theme for level 2
+            },
+            
+            // Level 3 - Complex Layout
+            {
+                floor: { width: 70, depth: 70 },
+                obstacles: [
+                    // Central structure
+                    { type: 'box', width: 6, height: 6, depth: 4, x: 0, y: 0, z: 2 },
+                    
+                    // Outer walls
+                    { type: 'box', width: 2, height: 20, depth: 3, x: -15, y: 0, z: 1.5 },
+                    { type: 'box', width: 2, height: 20, depth: 3, x: 15, y: 0, z: 1.5 },
+                    { type: 'box', width: 20, height: 2, depth: 3, x: 0, y: -15, z: 1.5 },
+                    { type: 'box', width: 20, height: 2, depth: 3, x: 0, y: 15, z: 1.5 },
+                    
+                    // Random obstacles
+                    { type: 'box', width: 3, height: 3, depth: 5, x: 10, y: 10, z: 2.5 },
+                    { type: 'box', width: 3, height: 3, depth: 5, x: -10, y: -10, z: 2.5 },
+                    { type: 'box', width: 3, height: 3, depth: 5, x: -10, y: 10, z: 2.5 },
+                    { type: 'box', width: 3, height: 3, depth: 5, x: 10, y: -10, z: 2.5 }
+                ],
+                collectibles: [
+                    // Around center
+                    { x: 5, y: 5, z: 1 },
+                    { x: -5, y: -5, z: 1 },
+                    { x: -5, y: 5, z: 1 },
+                    { x: 5, y: -5, z: 1 },
+                    
+                    // Near corners
+                    { x: 12, y: 12, z: 1 },
+                    { x: -12, y: -12, z: 1 },
+                    { x: -12, y: 12, z: 1 },
+                    { x: 12, y: -12, z: 1 },
+                    
+                    // On top of obstacles
+                    { x: 0, y: 0, z: 5 },
+                    { x: 10, y: 10, z: 6 }
+                ],
+                portal: { x: 20, y: 20, z: 0.5 },
+                theme: 'green' // Theme for level 3
+            }
+        ];
+        
+        console.log(`Initialized ${this.levels.length} level designs`);
+    }
+
+    updateScoreDisplay() {
+        if (this.ui) {
+            // Update score in UI
+            this.ui.updateScore(this.score);
+        }
+    }
+
+    updateCamera() {
+        if (!this.player || !this.camera) return;
+        
+        // Set camera to follow player but from an isometric perspective
+        const targetX = this.player.mesh.position.x;
+        const targetY = this.player.mesh.position.y - 10; // Stay behind the player
+        const targetZ = this.player.mesh.position.z + 10; // Stay above the player
+        
+        // Smooth camera movement
+        this.camera.position.x = targetX;
+        this.camera.position.y = targetY;
+        this.camera.position.z = targetZ;
+        
+        // Always look at player
+        this.camera.lookAt(this.player.mesh.position);
     }
 } 

@@ -68,6 +68,36 @@ export class GameUI {
         // Add score box to the container
         this.container.appendChild(this.scoreBox);
         
+        // Create pause button
+        this.pauseBtn = document.createElement('button');
+        this.pauseBtn.id = 'pause-btn';
+        this.pauseBtn.textContent = 'PAUSE';
+        this.pauseBtn.style.position = 'absolute';
+        this.pauseBtn.style.top = '20px'; // Match the score's top position
+        this.pauseBtn.style.right = '20px';
+        this.pauseBtn.style.padding = '8px 15px';
+        this.pauseBtn.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        this.pauseBtn.style.color = '#00FFFF';
+        this.pauseBtn.style.fontFamily = "'Orbitron', sans-serif";
+        this.pauseBtn.style.fontSize = '16px';
+        this.pauseBtn.style.fontWeight = 'bold';
+        this.pauseBtn.style.border = '2px solid #00FFFF';
+        this.pauseBtn.style.borderRadius = '5px';
+        this.pauseBtn.style.cursor = 'pointer';
+        this.pauseBtn.style.pointerEvents = 'auto';
+        this.pauseBtn.style.boxShadow = '0 0 10px #00FFFF';
+        this.pauseBtn.style.zIndex = '10';
+        
+        // Add pause button event listener
+        this.pauseBtn.addEventListener('click', () => {
+            if (this.game) {
+                this.game.togglePause();
+            }
+        });
+        
+        // Add pause button to container
+        this.container.appendChild(this.pauseBtn);
+        
         // Load Tron-style fonts
         const fontLink = document.createElement('link');
         fontLink.rel = 'stylesheet';
@@ -349,5 +379,83 @@ export class GameUI {
             `;
             document.head.appendChild(styleSheet);
         }
+    }
+    
+    updateScore(score) {
+        // Check if score element exists, if not create it
+        if (!this.scoreElement) {
+            this.scoreElement = document.createElement('div');
+            this.scoreElement.id = 'score';
+            this.scoreElement.style.position = 'absolute';
+            this.scoreElement.style.top = '20px';
+            this.scoreElement.style.right = '20px';
+            this.scoreElement.style.fontSize = '24px';
+            this.scoreElement.style.fontWeight = 'bold';
+            this.scoreElement.style.color = '#ffffff';
+            this.scoreElement.style.textShadow = '0 0 3px #000';
+            document.body.appendChild(this.scoreElement);
+        }
+        
+        // Update score display
+        this.scoreElement.textContent = `Score: ${score}`;
+    }
+    
+    showScorePopup(text, position) {
+        // Create a temporary text element for score feedback
+        const popup = document.createElement('div');
+        popup.className = 'score-popup';
+        popup.textContent = text;
+        popup.style.position = 'absolute';
+        
+        // Position the popup near the collected item
+        // Convert 3D position to screen position
+        // This is a simplified approach - in a real game, you'd convert from 3D to screen coords
+        const left = window.innerWidth / 2 + position.x * 20;  // Approximation
+        const top = window.innerHeight / 2 - position.y * 20;  // Approximation
+        
+        popup.style.left = `${left}px`;
+        popup.style.top = `${top}px`;
+        
+        // Style the popup
+        popup.style.color = '#ffff00';
+        popup.style.fontWeight = 'bold';
+        popup.style.fontSize = '24px';
+        popup.style.textShadow = '0 0 5px #000';
+        popup.style.pointerEvents = 'none';  // So it doesn't interfere with mouse events
+        popup.style.zIndex = '1000';
+        popup.style.opacity = '1';
+        popup.style.transition = 'all 0.8s ease-out';
+        
+        // Add to the DOM
+        document.body.appendChild(popup);
+        
+        // Animate the popup
+        setTimeout(() => {
+            popup.style.top = `${top - 50}px`;  // Move up
+            popup.style.opacity = '0';  // Fade out
+        }, 50);
+        
+        // Remove the popup after animation completes
+        setTimeout(() => {
+            document.body.removeChild(popup);
+        }, 1000);
+    }
+    
+    updateDistance(distance) {
+        // Check if distance element exists, if not create it
+        if (!this.distanceElement) {
+            this.distanceElement = document.createElement('div');
+            this.distanceElement.id = 'distance';
+            this.distanceElement.style.position = 'absolute';
+            this.distanceElement.style.top = '50px';
+            this.distanceElement.style.right = '20px';
+            this.distanceElement.style.fontSize = '18px';
+            this.distanceElement.style.color = '#ffffff';
+            this.distanceElement.style.textShadow = '0 0 3px #000';
+            document.body.appendChild(this.distanceElement);
+        }
+        
+        // Update distance display
+        this.distanceElement.textContent = `Distance: ${distance}m`;
     }
 } 
