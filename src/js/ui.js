@@ -68,6 +68,30 @@ export class GameUI {
         // Add score box to the container
         this.container.appendChild(this.scoreBox);
         
+        // Create level display at top center
+        this.levelDisplay = document.createElement('div');
+        this.levelDisplay.id = 'level-display';
+        this.levelDisplay.style.position = 'absolute';
+        this.levelDisplay.style.top = '20px';
+        this.levelDisplay.style.left = '50%';
+        this.levelDisplay.style.transform = 'translateX(-50%)';
+        this.levelDisplay.style.color = '#00FFFF';
+        this.levelDisplay.style.fontFamily = "'Orbitron', 'Rajdhani', sans-serif";
+        this.levelDisplay.style.fontSize = '24px';
+        this.levelDisplay.style.fontWeight = 'bold';
+        this.levelDisplay.style.padding = '8px 20px';
+        this.levelDisplay.style.borderRadius = '8px';
+        this.levelDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        this.levelDisplay.style.border = '2px solid #00FFFF';
+        this.levelDisplay.style.boxShadow = '0 0 10px #00FFFF, inset 0 0 5px #00FFFF';
+        this.levelDisplay.style.textShadow = '0 0 5px #00FFFF';
+        this.levelDisplay.style.letterSpacing = '2px';
+        this.levelDisplay.style.zIndex = '10';
+        this.levelDisplay.textContent = 'LEVEL 1';
+        
+        // Add level display to the container
+        this.container.appendChild(this.levelDisplay);
+        
         // Create pause button
         this.pauseBtn = document.createElement('button');
         this.pauseBtn.id = 'pause-btn';
@@ -231,10 +255,23 @@ export class GameUI {
             this.scoreDisplay.style.borderColor = accentColor;
             this.scoreDisplay.style.boxShadow = `0 0 10px ${accentColor}, inset 0 0 5px ${accentColor}`;
             this.scoreDisplay.style.textShadow = `0 0 5px ${accentColor}`;
+            
+            // Update level display colors as well
+            if (this.levelDisplay) {
+                this.levelDisplay.style.color = accentColor;
+                this.levelDisplay.style.borderColor = accentColor;
+                this.levelDisplay.style.boxShadow = `0 0 10px ${accentColor}, inset 0 0 5px ${accentColor}`;
+                this.levelDisplay.style.textShadow = `0 0 5px ${accentColor}`;
+            }
         }
         
         // Update the score display with animation for significant milestones
         this.scoreDisplay.textContent = `SCORE: ${this.score}`;
+        
+        // Update level display
+        if (this.levelDisplay && this.game.currentLevel) {
+            this.levelDisplay.textContent = `LEVEL ${this.game.currentLevel}`;
+        }
         
         // Highlight score on milestone (every 1000 points)
         if (this.score > 0 && this.score % 1000 === 0 && this.score !== this.lastMilestone) {

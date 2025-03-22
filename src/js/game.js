@@ -728,26 +728,21 @@ NOTE:
                 (this.levels[this.currentLevel - 1].collectedItems || 0) * 100 : 0;
             this.ui.showLevelMessage(`LEVEL ${this.currentLevel} COMPLETE! +${levelScore}`, 2000);
             
-            // Check if the next level has a theme
-            const nextLevel = this.levels[this.currentLevel];
-            if (!nextLevel || !nextLevel.theme) {
-                // If next level doesn't have a theme, select a new color scheme different from the current one
-                const previousColorScheme = this.currentColorScheme;
-                
-                // Force a distinct color theme change by rotating through available schemes
-                const availableSchemes = [...this.availableColorSchemes];
-                const currentIndex = availableSchemes.indexOf(this.currentColorScheme);
-                
-                // Force a new color scheme - ensure it's different by picking one at least 2 positions away
-                let nextIndex;
-                do {
-                    nextIndex = Math.floor(Math.random() * availableSchemes.length);
-                } while (nextIndex === currentIndex || Math.abs(nextIndex - currentIndex) < 2);
-                
-                this.currentColorScheme = availableSchemes[nextIndex];
-                
-                console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
-            }
+            // Always change the color scheme when entering a portal
+            // Force a distinct color theme change by rotating through available schemes
+            const previousColorScheme = this.currentColorScheme;
+            const availableSchemes = [...this.availableColorSchemes];
+            const currentIndex = availableSchemes.indexOf(this.currentColorScheme);
+            
+            // Force a new color scheme - ensure it's different by picking one at least 2 positions away
+            let nextIndex;
+            do {
+                nextIndex = Math.floor(Math.random() * availableSchemes.length);
+            } while (nextIndex === currentIndex || Math.abs(nextIndex - currentIndex) < 2);
+            
+            this.currentColorScheme = availableSchemes[nextIndex];
+            
+            console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
             
             // Add a short delay before transitioning to the next level
             // Ensure the transition happens by forcing it after the timeout
@@ -802,6 +797,16 @@ NOTE:
                 bar.style.backgroundColor = accentColor;
                 bar.style.boxShadow = `0 0 5px ${accentColor}`;
             });
+        }
+        
+        // Update level display
+        const levelDisplay = document.getElementById('level-display');
+        if (levelDisplay) {
+            levelDisplay.style.color = accentColor;
+            levelDisplay.style.borderColor = accentColor;
+            levelDisplay.style.boxShadow = `0 0 10px ${accentColor}, inset 0 0 5px ${accentColor}`;
+            levelDisplay.style.textShadow = `0 0 5px ${accentColor}`;
+            levelDisplay.textContent = `LEVEL ${this.currentLevel}`;
         }
         
         // Update retry button in the original game-over UI
@@ -892,6 +897,12 @@ NOTE:
         // Update current level
         this.currentLevel = levelNumber;
         
+        // Update level display UI
+        const levelDisplay = document.getElementById('level-display');
+        if (levelDisplay) {
+            levelDisplay.textContent = `LEVEL ${levelNumber}`;
+        }
+        
         // Create a new level with the current level design
         if (this.levels[levelNumber - 1]) {
             const levelDesign = this.levels[levelNumber - 1];
@@ -937,8 +948,11 @@ NOTE:
             // Setup collision detection with the new level
             this.collisionDetector = new CollisionDetector(this.player, this.level);
             
-            // Show level message
-            this.ui.showLevelMessage(`LEVEL ${levelNumber}`, 2000);
+            // Show level message - Make it more prominent and with more information
+            const levelInfo = this.levels[levelNumber - 1]?.theme ? 
+                `LEVEL ${levelNumber} - ${this.levels[levelNumber - 1].theme.toUpperCase()} THEME` : 
+                `LEVEL ${levelNumber}`;
+            this.ui.showLevelMessage(levelInfo, 3000);
             
             // Force an immediate render
             this.renderer.render(this.scene, this.camera);
@@ -950,64 +964,55 @@ NOTE:
     initializeLevels() {
         // Create predefined level designs
         this.levels = [
-            // Level 1 - Simple Introduction
+            // Level 1 - Simple Introduction (Made Easier)
             {
                 floor: { width: 50, depth: 50 },
                 obstacles: [
-                    { type: 'box', width: 3, height: 2, depth: 2, x: 5, y: 5, z: 1 },
-                    { type: 'box', width: 3, height: 2, depth: 2, x: -5, y: -5, z: 1 },
-                    { type: 'box', width: 2, height: 2, depth: 3, x: -7, y: 7, z: 1.5 }
+                    { type: 'box', width: 2, height: 1.5, depth: 1.5, x: 5, y: 5, z: 0.75 },
+                    { type: 'box', width: 2, height: 1.5, depth: 1.5, x: -5, y: -5, z: 0.75 }
                 ],
                 collectibles: [
                     { x: 3, y: 3, z: 1 },
                     { x: -3, y: -3, z: 1 },
-                    { x: 7, y: -7, z: 1 },
-                    { x: -7, y: 7, z: 3 }
+                    { x: 7, y: -7, z: 1 }
                 ],
-                portal: { x: 10, y: 10, z: 0.5 },
+                portal: { x: 8, y: 8, z: 0.5 }, // More accessible portal position
                 theme: 'purple' // Theme for level 1
             },
             
-            // Level 2 - More Obstacles
+            // Level 2 - More Obstacles (Made Easier)
             {
                 floor: { width: 60, depth: 60 },
                 obstacles: [
-                    { type: 'box', width: 4, height: 3, depth: 2, x: 8, y: 8, z: 1.5 },
-                    { type: 'box', width: 2, height: 4, depth: 2, x: -8, y: -8, z: 1 },
-                    { type: 'box', width: 3, height: 3, depth: 3, x: 0, y: 12, z: 1.5 },
-                    { type: 'box', width: 10, height: 1, depth: 1, x: -12, y: 0, z: 0.5 },
-                    { type: 'box', width: 1, height: 10, depth: 1, x: 12, y: -5, z: 0.5 }
+                    { type: 'box', width: 3, height: 2, depth: 1.5, x: 8, y: 8, z: 0.75 },
+                    { type: 'box', width: 2, height: 3, depth: 1.5, x: -8, y: -8, z: 0.75 },
+                    { type: 'box', width: 6, height: 1, depth: 1, x: -8, y: 0, z: 0.5 }
                 ],
                 collectibles: [
                     { x: 5, y: 5, z: 1 },
                     { x: -5, y: -5, z: 1 },
                     { x: 10, y: -10, z: 1 },
-                    { x: -10, y: 10, z: 1 },
-                    { x: 0, y: 15, z: 3 },
-                    { x: 15, y: 0, z: 1 }
+                    { x: -10, y: 10, z: 1 }
                 ],
-                portal: { x: 15, y: 15, z: 0.5 },
+                portal: { x: 12, y: 12, z: 0.5 }, // More accessible portal position
                 theme: 'blue' // Theme for level 2
             },
             
-            // Level 3 - Complex Layout
+            // Level 3 - Complex Layout (Made Easier)
             {
                 floor: { width: 70, depth: 70 },
                 obstacles: [
-                    // Central structure
-                    { type: 'box', width: 6, height: 6, depth: 4, x: 0, y: 0, z: 2 },
+                    // Central structure (smaller)
+                    { type: 'box', width: 4, height: 4, depth: 3, x: 0, y: 0, z: 1.5 },
                     
-                    // Outer walls
-                    { type: 'box', width: 2, height: 20, depth: 3, x: -15, y: 0, z: 1.5 },
-                    { type: 'box', width: 2, height: 20, depth: 3, x: 15, y: 0, z: 1.5 },
-                    { type: 'box', width: 20, height: 2, depth: 3, x: 0, y: -15, z: 1.5 },
-                    { type: 'box', width: 20, height: 2, depth: 3, x: 0, y: 15, z: 1.5 },
+                    // Outer walls (reduced size and number)
+                    { type: 'box', width: 2, height: 15, depth: 2, x: -15, y: 0, z: 1 },
+                    { type: 'box', width: 2, height: 15, depth: 2, x: 15, y: 0, z: 1 },
+                    { type: 'box', width: 15, height: 2, depth: 2, x: 0, y: -15, z: 1 },
                     
-                    // Random obstacles
-                    { type: 'box', width: 3, height: 3, depth: 5, x: 10, y: 10, z: 2.5 },
-                    { type: 'box', width: 3, height: 3, depth: 5, x: -10, y: -10, z: 2.5 },
-                    { type: 'box', width: 3, height: 3, depth: 5, x: -10, y: 10, z: 2.5 },
-                    { type: 'box', width: 3, height: 3, depth: 5, x: 10, y: -10, z: 2.5 }
+                    // Fewer random obstacles
+                    { type: 'box', width: 3, height: 3, depth: 3, x: 10, y: 10, z: 1.5 },
+                    { type: 'box', width: 3, height: 3, depth: 3, x: -10, y: -10, z: 1.5 }
                 ],
                 collectibles: [
                     // Around center
@@ -1019,14 +1024,11 @@ NOTE:
                     // Near corners
                     { x: 12, y: 12, z: 1 },
                     { x: -12, y: -12, z: 1 },
-                    { x: -12, y: 12, z: 1 },
-                    { x: 12, y: -12, z: 1 },
                     
-                    // On top of obstacles
-                    { x: 0, y: 0, z: 5 },
-                    { x: 10, y: 10, z: 6 }
+                    // On top of obstacles - placed lower for easier access
+                    { x: 0, y: 0, z: 3.5 }
                 ],
-                portal: { x: 20, y: 20, z: 0.5 },
+                portal: { x: 15, y: 15, z: 0.5 }, // More accessible portal position
                 theme: 'green' // Theme for level 3
             }
         ];
