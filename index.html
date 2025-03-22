@@ -40,13 +40,57 @@
             display: inline-block;
             transition: all 0.2s ease;
             letter-spacing: 1px;
+            animation: uiGlow 2s infinite alternate;
         }
         
         #score-display:hover {
             box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
         }
         
+        #level-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border: 2px solid #00FFFF;
+            border-radius: 4px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 18px;
+            box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
+            text-shadow: 0 0 5px #00FFFF;
+            letter-spacing: 1px;
+            z-index: 100;
+            transition: all 0.2s ease;
+            animation: uiGlow 2s infinite alternate;
+        }
+        
+        #level-display:hover {
+            box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
+        }
+        
+        @keyframes uiGlow {
+            from {
+                box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
+                text-shadow: 0 0 5px #00FFFF;
+            }
+            to {
+                box-shadow: 0 0 15px #00FFFF, inset 0 0 8px #00FFFF;
+                text-shadow: 0 0 8px #00FFFF;
+            }
+        }
+        
+        @keyframes levelUpdate {
+            0% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.2); }
+            100% { transform: translateX(-50%) scale(1); }
+        }
+        
         #pause-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -58,7 +102,8 @@
             cursor: pointer;
             box-shadow: 0 0 10px #00FFFF, inset 0 0 5px #00FFFF;
             transition: all 0.2s ease;
-            margin: 15px;
+            z-index: 100;
+            animation: uiGlow 2s infinite alternate;
         }
         
         #pause-btn:hover {
@@ -164,6 +209,8 @@
     <div id="ui">
         <div id="score-display">SCORE: 0</div>
     </div>
+    
+    <div id="level-display">LEVEL 1</div>
     
     <div id="pause-btn">
         <div></div>
@@ -321,8 +368,8 @@
                     ]
                 },
                 title5: {
-                    title: "Portal Finale",
-                    description: "Final section with a portal to the next level",
+                    title: "Treasure Finale",
+                    description: "Final section with a special collectible",
                     width: 20,
                     height: 8,
                     layout: [
@@ -361,6 +408,12 @@
                         this.startPlaced = false;
                         
                         logDebug(`Generating level ${levelNumber} with difficulty ${difficulty}`);
+                        
+                        // Update level display
+                        const levelDisplay = document.getElementById('level-display');
+                        if (levelDisplay) {
+                            levelDisplay.textContent = `LEVEL ${levelNumber}`;
+                        }
                         
                         // Always start with the 'start' title
                         const startTitle = this.levelTitles['start'];
@@ -648,6 +701,9 @@
                     this.isJumping = false;
                     this.onGround = false;
                     
+                    // Initialize level display
+                    this.levelDisplay = document.getElementById('level-display');
+                    
                     logDebug("Player created with Tron-like appearance");
                 }
                 
@@ -815,7 +871,6 @@
                     this.platforms = [];
                     this.obstacles = [];
                     this.collectibles = [];
-                    this.portalObject = null;
                     
                     // Create ground - darker with bright outline like in the image
                     const groundGeometry = new THREE.BoxGeometry(100, 0.5, 1);
@@ -864,7 +919,10 @@
                     let xPos = -40; // Start position
                     const tileSize = 2; // Size of each tile
                     
-                    // Parse each character in the level data
+                    // Track spike positions for clustering
+                    const spikes = [];
+                    
+                    // First pass - collect spike positions
                     for (let col = 0; col < rows[0].length; col++) {
                         for (let row = 0; row < rows.length; row++) {
                             // Invert row to make bottom row the ground level
@@ -876,13 +934,207 @@
                             // Calculate y position - ensure everything starts from the ground level up
                             const yPos = this.groundY + 0.5 + row * tileSize;
                             
-                            // Process based on character type
-                            this.createTile(char, xPos, yPos);
+                            // Track spike positions
+                            if (char === '^') {
+                                spikes.push({ x: xPos, y: yPos });
+                            }
                         }
                         
                         // Move to the next column
                         xPos += tileSize;
                     }
+                    
+                    // Reset position for actual creation
+                    xPos = -40;
+                    
+                    // Cluster the spikes
+                    const clusteredSpikes = this.clusterSpikes(spikes);
+                    
+                    // Second pass - create level elements
+                    for (let col = 0; col < rows[0].length; col++) {
+                        for (let row = 0; row < rows.length; row++) {
+                            // Invert row to make bottom row the ground level
+                            const invertedRow = rows.length - 1 - row;
+                            
+                            // Get the character at this position
+                            const char = rows[invertedRow][col];
+                            
+                            // Calculate y position - ensure everything starts from the ground level up
+                            const yPos = this.groundY + 0.5 + row * tileSize;
+                            
+                            // Skip spike creation here as we'll handle it separately
+                            if (char !== '^') {
+                                this.createTile(char, xPos, yPos);
+                            }
+                        }
+                        
+                        // Move to the next column
+                        xPos += tileSize;
+                    }
+                    
+                    // Create clustered spikes
+                    this.createSpikesClusters(clusteredSpikes);
+                }
+                
+                // Cluster spikes into groups of 2-5
+                clusterSpikes(spikes) {
+                    if (spikes.length === 0) return [];
+                    
+                    // Sort spikes by x position to make clustering easier
+                    spikes.sort((a, b) => a.x - b.x);
+                    
+                    const clusters = [];
+                    let currentCluster = [spikes[0]];
+                    
+                    // Group adjacent spikes
+                    for (let i = 1; i < spikes.length; i++) {
+                        const prevSpike = spikes[i-1];
+                        const currentSpike = spikes[i];
+                        
+                        // Check if current spike is adjacent to previous one
+                        if (Math.abs(currentSpike.x - prevSpike.x) <= 2.5 && 
+                            Math.abs(currentSpike.y - prevSpike.y) <= 0.1) {
+                            // Add to current cluster
+                            currentCluster.push(currentSpike);
+                        } else {
+                            // Finish current cluster and start a new one
+                            clusters.push([...currentCluster]);
+                            currentCluster = [currentSpike];
+                        }
+                        
+                        // Limit cluster size to 5
+                        if (currentCluster.length === 5) {
+                            clusters.push([...currentCluster]);
+                            currentCluster = [];
+                            // If we have more spikes, start a new cluster with the next spike
+                            if (i + 1 < spikes.length) {
+                                i++;
+                                currentCluster = [spikes[i]];
+                            }
+                        }
+                    }
+                    
+                    // Add the last cluster if not empty
+                    if (currentCluster.length > 0) {
+                        clusters.push(currentCluster);
+                    }
+                    
+                    // Ensure each cluster has at least 2 spikes
+                    // If a cluster has only 1 spike, duplicate it
+                    return clusters.map(cluster => {
+                        if (cluster.length === 1) {
+                            // Create a second spike next to the first one
+                            const spike = cluster[0];
+                            return [
+                                spike,
+                                { x: spike.x + 1, y: spike.y }
+                            ];
+                        }
+                        return cluster;
+                    });
+                }
+                
+                // Create spike clusters
+                createSpikesClusters(clusters) {
+                    clusters.forEach(cluster => {
+                        // Adjust positions to prevent intersection
+                        const adjustedPositions = this.adjustSpikePositions(cluster);
+                        
+                        // Create each spike in the cluster
+                        adjustedPositions.forEach(pos => {
+                            this.createSpikeAt(pos.x, pos.y);
+                        });
+                    });
+                }
+                
+                // Adjust spike positions to prevent intersections
+                adjustSpikePositions(cluster) {
+                    // If cluster has only one spike, no adjustment needed
+                    if (cluster.length <= 1) return cluster;
+                    
+                    // Sort by x position
+                    const sorted = [...cluster].sort((a, b) => a.x - b.x);
+                    
+                    // Ensure minimum spacing between spikes (0.8 units)
+                    const adjusted = [sorted[0]];
+                    const minSpacing = 0.8;
+                    
+                    for (let i = 1; i < sorted.length; i++) {
+                        const prevSpike = adjusted[adjusted.length - 1];
+                        let nextX = Math.max(sorted[i].x, prevSpike.x + minSpacing);
+                        
+                        adjusted.push({
+                            x: nextX,
+                            y: sorted[i].y
+                        });
+                    }
+                    
+                    return adjusted;
+                }
+                
+                // Create a single spike at the specified position
+                createSpikeAt(x, y) {
+                    // Use a custom triangle geometry for spike to match the image
+                    const spikeShape = new THREE.Shape();
+                    spikeShape.moveTo(0, 1); // Top point
+                    spikeShape.lineTo(-0.6, -0.2); // Bottom left
+                    spikeShape.lineTo(0.6, -0.2); // Bottom right
+                    spikeShape.lineTo(0, 1); // Back to top
+                    
+                    const spikeGeometry = new THREE.ShapeGeometry(spikeShape);
+                    const spikeMaterial = new THREE.MeshBasicMaterial({ 
+                        color: 0x40FFFF, // Cyan triangles like in the image
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                    
+                    // Ensure spike is above the ground, not inside it
+                    if (y <= this.groundY + 0.5) {
+                        y = this.groundY + 0.5; // Place the spike on top of the ground
+                    }
+                    
+                    spike.position.set(x, y, 0);
+                    spike.userData.type = 'obstacle';
+                    spike.userData.width = 1.2;
+                    spike.userData.height = 1.2;
+                    this.scene.add(spike);
+                    this.obstacles.push(spike);
+                    
+                    // Add glow edge effect to spikes using line segments
+                    const spikeEdgesGeometry = new THREE.BufferGeometry();
+                    const spikeVertices = new Float32Array([
+                        0, 1, 0,       // Top point
+                        -0.6, -0.2, 0, // Bottom left
+                        0.6, -0.2, 0,  // Bottom right
+                        0, 1, 0        // Back to top
+                    ]);
+                    spikeEdgesGeometry.setAttribute('position', new THREE.BufferAttribute(spikeVertices, 3));
+                    
+                    const spikeEdgesMaterial = new THREE.LineBasicMaterial({
+                        color: 0x00FFFF,
+                        linewidth: 2
+                    });
+                    const spikeEdges = new THREE.Line(spikeEdgesGeometry, spikeEdgesMaterial);
+                    spike.add(spikeEdges);
+                    
+                    // Add subtle glow effect to spikes
+                    const spikeGlowShape = new THREE.Shape();
+                    spikeGlowShape.moveTo(0, 1.2); // Top point
+                    spikeGlowShape.lineTo(-0.8, -0.3); // Bottom left
+                    spikeGlowShape.lineTo(0.8, -0.3); // Bottom right
+                    spikeGlowShape.lineTo(0, 1.2); // Back to top
+                    
+                    const spikeGlowGeometry = new THREE.ShapeGeometry(spikeGlowShape);
+                    const spikeGlowMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x00FFFF,
+                        transparent: true, 
+                        opacity: 0.2,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const spikeGlow = new THREE.Mesh(spikeGlowGeometry, spikeGlowMaterial);
+                    spikeGlow.position.z = -0.1; // Place slightly behind the spike
+                    spike.add(spikeGlow);
                 }
                 
                 createTile(type, x, y) {
@@ -913,69 +1165,8 @@
                             
                             break;
                             
-                        case '^': // Spike
-                            // Use a custom triangle geometry for spike to match the image
-                            const spikeShape = new THREE.Shape();
-                            spikeShape.moveTo(0, 1); // Top point
-                            spikeShape.lineTo(-0.6, -0.2); // Bottom left
-                            spikeShape.lineTo(0.6, -0.2); // Bottom right
-                            spikeShape.lineTo(0, 1); // Back to top
-                            
-                            const spikeGeometry = new THREE.ShapeGeometry(spikeShape);
-                            const spikeMaterial = new THREE.MeshBasicMaterial({ 
-                                color: 0x40FFFF, // Cyan triangles like in the image
-                                transparent: true,
-                                opacity: 0.8
-                            });
-                            const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
-                            
-                            // Ensure spike is above the ground, not inside it
-                            if (y <= this.groundY + 0.5) {
-                                y = this.groundY + 0.5; // Place the spike on top of the ground
-                            }
-                            
-                            spike.position.set(x, y, 0);
-                            spike.userData.type = 'obstacle';
-                            spike.userData.width = 1.2;
-                            spike.userData.height = 1.2;
-                            this.scene.add(spike);
-                            this.obstacles.push(spike);
-                            
-                            // Add glow edge effect to spikes using line segments
-                            const spikeEdgesGeometry = new THREE.BufferGeometry();
-                            const spikeVertices = new Float32Array([
-                                0, 1, 0,       // Top point
-                                -0.6, -0.2, 0, // Bottom left
-                                0.6, -0.2, 0,  // Bottom right
-                                0, 1, 0        // Back to top
-                            ]);
-                            spikeEdgesGeometry.setAttribute('position', new THREE.BufferAttribute(spikeVertices, 3));
-                            
-                            const spikeEdgesMaterial = new THREE.LineBasicMaterial({
-                                color: 0x00FFFF,
-                                linewidth: 2
-                            });
-                            const spikeEdges = new THREE.Line(spikeEdgesGeometry, spikeEdgesMaterial);
-                            spike.add(spikeEdges);
-                            
-                            // Add subtle glow effect to spikes
-                            const spikeGlowShape = new THREE.Shape();
-                            spikeGlowShape.moveTo(0, 1.2); // Top point
-                            spikeGlowShape.lineTo(-0.8, -0.3); // Bottom left
-                            spikeGlowShape.lineTo(0.8, -0.3); // Bottom right
-                            spikeGlowShape.lineTo(0, 1.2); // Back to top
-                            
-                            const spikeGlowGeometry = new THREE.ShapeGeometry(spikeGlowShape);
-                            const spikeGlowMaterial = new THREE.MeshBasicMaterial({
-                                color: 0x00FFFF,
-                                transparent: true, 
-                                opacity: 0.2,
-                                blending: THREE.AdditiveBlending
-                            });
-                            const spikeGlow = new THREE.Mesh(spikeGlowGeometry, spikeGlowMaterial);
-                            spikeGlow.position.z = -0.1; // Place slightly behind the spike
-                            spike.add(spikeGlow);
-                            
+                        case '^': // Spike - handled separately in clustered spikes
+                            // Spike creation is now handled in createSpikesClusters
                             break;
                             
                         case 'C': // Coin
@@ -1048,50 +1239,36 @@
                             jumpPad.userData.glowMesh = jumpPadGlow;
                             break;
                             
-                        case 'P': // Portal
-                            const portalGeometry = new THREE.RingGeometry(0.7, 1, 32);
-                            const portalMaterial = new THREE.MeshBasicMaterial({ 
-                                color: 0x40FF40, // Make portals green to match the image
-                                side: THREE.DoubleSide,
+                        case 'P': // Portal (replaced with a special collectible)
+                            const specialCoinGeometry = new THREE.CircleGeometry(0.7, 16);
+                            const specialCoinMaterial = new THREE.MeshBasicMaterial({ 
+                                color: 0x00FFAA, // Special teal-colored coin
                                 transparent: true,
-                                opacity: 0.9
+                                opacity: 0.9,
+                                side: THREE.DoubleSide
                             });
-                            const portal = new THREE.Mesh(portalGeometry, portalMaterial);
+                            const specialCoin = new THREE.Mesh(specialCoinGeometry, specialCoinMaterial);
+                            specialCoin.position.set(x, y, 0);
+                            specialCoin.userData.type = 'coin';
+                            specialCoin.userData.width = 1.4;
+                            specialCoin.userData.height = 1.4;
+                            specialCoin.userData.collected = false;
+                            // Special coin worth more points
+                            specialCoin.userData.value = 500;
+                            this.scene.add(specialCoin);
+                            this.collectibles.push(specialCoin);
                             
-                            // Place portal at the ground level as seen in the image
-                            const portalY = this.groundY + 0.75;
-                            portal.position.set(x, portalY, 0);
-                            
-                            portal.userData.type = 'portal';
-                            portal.userData.width = 2;
-                            portal.userData.height = 1.5; // Reduced height
-                            this.scene.add(portal);
-                            this.portalObject = portal;
-                            
-                            // Add glow effect to portal
-                            const portalGlowGeometry = new THREE.RingGeometry(0.5, 1.3, 32);
-                            const portalGlowMaterial = new THREE.MeshBasicMaterial({
-                                color: 0x40FF40, // Green glow
+                            // Add glow effect to special coin
+                            const specialCoinGlowGeometry = new THREE.CircleGeometry(1, 16);
+                            const specialCoinGlowMaterial = new THREE.MeshBasicMaterial({
+                                color: 0x00FFAA,
                                 transparent: true,
-                                opacity: 0.5,
+                                opacity: 0.4,
                                 blending: THREE.AdditiveBlending,
                                 side: THREE.DoubleSide
                             });
-                            const portalGlow = new THREE.Mesh(portalGlowGeometry, portalGlowMaterial);
-                            portal.add(portalGlow);
-                            
-                            // Add number display on portal for level indication
-                            const textGeometry = new THREE.BoxGeometry(0.6, 0.6, 0.2);
-                            const textMaterial = new THREE.MeshBasicMaterial({
-                                color: 0x00FF00,
-                                transparent: false
-                            });
-                            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                            textMesh.position.z = 0.1;
-                            portal.add(textMesh);
-                            
-                            // Store the glow mesh for animation
-                            portal.userData.glowMesh = portalGlow;
+                            const specialCoinGlow = new THREE.Mesh(specialCoinGlowGeometry, specialCoinGlowMaterial);
+                            specialCoin.add(specialCoinGlow);
                             break;
                             
                         case 'S': // Start position
@@ -1170,6 +1347,7 @@
                     
                     // Update UI
                     this.updateScoreDisplay();
+                    this.updateLevelDisplay();
                 }
                 
                 animate() {
@@ -1301,14 +1479,6 @@
                             glow.material.opacity = 0.3 + Math.sin(performance.now() * 0.01) * 0.2;
                         }
                     });
-                    
-                    // Animate portal if it exists
-                    if (this.portalObject && this.portalObject.userData.glowMesh) {
-                        const portalGlow = this.portalObject.userData.glowMesh;
-                        portalGlow.rotation.z += deltaTime * 2;
-                        portalGlow.scale.x = 1 + Math.sin(performance.now() * 0.003) * 0.15;
-                        portalGlow.scale.y = 1 + Math.sin(performance.now() * 0.003) * 0.15;
-                    }
                 }
                 
                 checkCollisions() {
@@ -1419,34 +1589,28 @@
                             coin.userData.collected = true;
                             this.scene.remove(coin);
                             
-                            // Add to score
-                            this.score += 100;
+                            // Add to score - check for special coin value
+                            const coinValue = coin.userData.value || 100;
+                            this.score += coinValue;
                             this.updateScoreDisplay();
-                        }
-                    }
-                    
-                    // Portal collision
-                    if (this.portalObject) {
-                        const playerX = this.player.position.x;
-                        const playerY = this.player.position.y;
-                        const portalX = this.portalObject.position.x;
-                        const portalY = this.portalObject.position.y;
-                        
-                        // Simple distance check
-                        const dx = playerX - portalX;
-                        const dy = playerY - portalY;
-                        const distance = Math.sqrt(dx*dx + dy*dy);
-                        
-                        if (distance < 2) {
-                            // Next level
-                            logDebug("Portal reached - level complete!");
-                            this.createLevel(); // Just reload the level for now
                         }
                     }
                 }
                 
                 updateScoreDisplay() {
                     this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
+                }
+                
+                updateLevelDisplay() {
+                    const levelDisplay = document.getElementById('level-display');
+                    if (levelDisplay) {
+                        levelDisplay.textContent = `LEVEL ${this.levelManager.currentLevel}`;
+                        
+                        // Briefly highlight level display with animation when updated
+                        levelDisplay.style.animation = 'none';
+                        void levelDisplay.offsetWidth; // Trigger reflow
+                        levelDisplay.style.animation = 'uiGlow 2s infinite alternate, levelUpdate 0.5s';
+                    }
                 }
                 
                 gameOver() {
