@@ -1110,6 +1110,9 @@
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
                     
+                    // Player size
+                    this.playerSize = 1.0;
+                    
                     // Create a composite player object to match the reference image
                     this.player = new THREE.Group();
                     this.player.position.set(-5, this.groundY + this.playerSize/2 + 0.5, 0);
@@ -1118,7 +1121,7 @@
                     // Create the main square shape without rotation (matches image)
                     const mainGeometry = new THREE.BoxGeometry(this.playerSize, this.playerSize, this.playerSize * 0.5);
                     const mainMaterial = new THREE.MeshBasicMaterial({ 
-                        color: theme.player,
+                        color: theme.player, // Use theme player color
                         transparent: true,
                         opacity: 0.9
                     });
@@ -1130,7 +1133,7 @@
                     // Create inner box
                     const innerGeometry = new THREE.BoxGeometry(this.playerSize * 0.6, this.playerSize * 0.6, this.playerSize * 0.5);
                     const innerMaterial = new THREE.MeshBasicMaterial({ 
-                        color: theme.player, 
+                        color: theme.player, // Use theme player color
                         transparent: true,
                         opacity: 0.9
                     });
@@ -1140,7 +1143,7 @@
                     // Add bright center point
                     const centerGeometry = new THREE.BoxGeometry(this.playerSize * 0.2, this.playerSize * 0.2, this.playerSize * 0.2);
                     const centerMaterial = new THREE.MeshBasicMaterial({ 
-                        color: 0xFFFFFF,
+                        color: 0xFFFFFF, // Keep center white for contrast
                         transparent: false
                     });
                     const centerMesh = new THREE.Mesh(centerGeometry, centerMaterial);
@@ -1149,11 +1152,12 @@
                     // Add edge lines 
                     const edges = new THREE.EdgesGeometry(mainGeometry);
                     const lineMaterial = new THREE.LineBasicMaterial({ 
-                        color: theme.player, 
+                        color: theme.playerEdge || theme.player, // Use theme player edge color or player color as fallback
                         linewidth: 2
                     });
                     const wireframe = new THREE.LineSegments(edges, lineMaterial);
                     this.player.add(wireframe);
+                    this.playerWireframe = wireframe; // Store reference for theme updates
                     
                     // Create outer glow
                     const glowGeometry = new THREE.BoxGeometry(
@@ -1162,7 +1166,7 @@
                         this.playerSize * 0.5
                     );
                     const glowMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.player,
+                        color: theme.player, // Use theme player color
                         transparent: true,
                         opacity: 0.3,
                         blending: THREE.AdditiveBlending
@@ -1170,9 +1174,6 @@
                     const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
                     this.player.add(glowMesh);
                     this.playerGlow = glowMesh;
-                    
-                    // Trail particles have been removed per request
-                    this.trailParticles = null;
                     
                     // Initialize jump particle system
                     this.jumpParticles = [];
@@ -1187,11 +1188,19 @@
                     // Initialize level display
                     this.levelDisplay = document.getElementById('level-display');
                     
-                    logDebug("Player created with Tron-like appearance");
+                    // Store current player theme color to check for theme changes
+                    this.currentPlayerThemeColor = theme.player;
+                    
+                    logDebug("Player created with Tron-like appearance using theme colors");
                 }
                 
                 // Create jump particles effect
                 createJumpParticles() {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    const particleColor = theme.player; // Use player color for the particles
+                    
                     // Clear any existing jump particles
                     this.jumpParticles.forEach(particle => {
                         this.scene.remove(particle);
@@ -1204,7 +1213,7 @@
                         const size = 0.1 + Math.random() * 0.2;
                         const particleGeometry = new THREE.BoxGeometry(size, size, size);
                         const particleMaterial = new THREE.MeshBasicMaterial({
-                            color: 0x40FFFF,
+                            color: particleColor,
                             transparent: true,
                             opacity: 0.7,
                             blending: THREE.AdditiveBlending
@@ -1250,6 +1259,11 @@
                 
                 // Update jump path visualization
                 updateJumpPath() {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    const pathColor = theme.player; // Use player color for the path
+                    
                     // Add current position to jump history
                     this.jumpHistoryPoints.push(new THREE.Vector3(
                         this.player.position.x,
@@ -1322,9 +1336,9 @@
                     pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
                     pathGeometry.setIndex(indices);
                     
-                    // Create path material with fade effect
+                    // Create path material with fade effect - using theme color
                     const pathMaterial = new THREE.MeshBasicMaterial({
-                        color: 0x00FFFF,
+                        color: pathColor,
                         transparent: true,
                         opacity: 0.6,
                         blending: THREE.AdditiveBlending,
@@ -1368,6 +1382,9 @@
                     
                     // Update UI colors to match the current theme
                     this.updateUITheme();
+                    
+                    // Update player colors to match the current theme
+                    this.updatePlayerTheme();
                     
                     // Create ground - darker with bright outline like in the image
                     const groundGeometry = new THREE.BoxGeometry(100, 0.5, 1);
@@ -1992,7 +2009,7 @@
                     // Get current theme colors
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
-                    const portalColor = 0x00FFFF; // Override with bright cyan color from image
+                    const portalColor = theme.portal; // Use the theme portal color instead of hard-coded cyan
                     
                     // Create portal group
                     this.portal = new THREE.Group();
@@ -2509,6 +2526,107 @@
                                 this.player.position.set(x, y + this.playerSize/2 + 0.1, 0);
                             }
                             break;
+                    }
+                }
+
+                // Create jump arc visualization
+                createJumpPath(startPoint, endPoint) {
+                    // Remove any existing path
+                    if (this.jumpPath) {
+                        this.scene.remove(this.jumpPath);
+                        this.jumpPath = null;
+                        this.jumpHistoryPoints = [];
+                    }
+                    
+                    // Get current theme colors for the jump path
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    const jumpPathColor = theme.player; // Use player color for jump path
+                    
+                    // Create a curve for the jump trajectory
+                    const midPoint = new THREE.Vector3(
+                        (startPoint.x + endPoint.x) / 2,
+                        Math.max(startPoint.y, endPoint.y) + this.jumpHeight,
+                        0
+                    );
+                    
+                    const curve = new THREE.QuadraticBezierCurve3(
+                        new THREE.Vector3(startPoint.x, startPoint.y, 0),
+                        midPoint,
+                        new THREE.Vector3(endPoint.x, endPoint.y, 0)
+                    );
+                    
+                    // Create a path from the curve
+                    const points = curve.getPoints(50);
+                    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                    
+                    // Use the theme color for the path
+                    const material = new THREE.LineBasicMaterial({ 
+                        color: jumpPathColor,
+                        linewidth: 2,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    
+                    this.jumpPath = new THREE.Line(geometry, material);
+                    this.scene.add(this.jumpPath);
+                    
+                    // Store the points for history tracking
+                    this.jumpHistoryPoints = points;
+                    
+                    return points;
+                }
+
+                // Update the player's colors to match the current theme
+                updatePlayerTheme() {
+                    // Get current theme colors
+                    const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
+                    const theme = this.themes[themeIndex];
+                    
+                    // Check if player theme color needs updating
+                    if (this.currentPlayerThemeColor !== theme.player) {
+                        // Update main mesh
+                        if (this.playerMainMesh) {
+                            this.playerMainMesh.material.color.set(theme.player);
+                        }
+                        
+                        // Update inner mesh (find by size)
+                        this.player.children.forEach(child => {
+                            if (child.geometry && 
+                                child.geometry.type === 'BoxGeometry' && 
+                                child.geometry.parameters.width === this.playerSize * 0.6) {
+                                child.material.color.set(theme.player);
+                            }
+                        });
+                        
+                        // Update edge wireframe
+                        if (this.playerWireframe) {
+                            this.playerWireframe.material.color.set(theme.playerEdge || theme.player);
+                        }
+                        
+                        // Update glow
+                        if (this.playerGlow) {
+                            this.playerGlow.material.color.set(theme.player);
+                        }
+                        
+                        // Update jump path if it exists
+                        if (this.jumpPath && this.jumpPath.material) {
+                            this.jumpPath.material.color.set(theme.player);
+                        }
+                        
+                        // Update any active jump particles
+                        if (this.jumpParticles && this.jumpParticles.length > 0) {
+                            this.jumpParticles.forEach(particle => {
+                                if (particle.material) {
+                                    particle.material.color.set(theme.player);
+                                }
+                            });
+                        }
+                        
+                        // Update stored color reference
+                        this.currentPlayerThemeColor = theme.player;
+                        
+                        logDebug("Updated player theme colors");
                     }
                 }
             }
