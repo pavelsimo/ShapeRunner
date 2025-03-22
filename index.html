@@ -290,7 +290,7 @@
                         "...........",
                         "...........",
                         "...........",
-                        "....S......",
+                        "....S...W..",
                         "BBBBBBBBBB.",
                         "..........."
                     ]
@@ -1804,13 +1804,13 @@
                             platform.add(wireframe);
                             
                             break;
-                        
-                        case 'W': // Upward spike
-                            this.createSpike(x, y, 'up');
+                            
+                        case 'W':
+                            this.createTriangleSpike(x, y);
                             break;
                             
-                        case 'V': // Downward spike
-                            this.createSpike(x, y, 'down');
+                        case 'V': // Downward spike - REMOVED as requested
+                            console.log("Skipping spike at", x, y);
                             break;
                             
                         case 'S': // Start position
@@ -1831,55 +1831,48 @@
                             this.createPortal(x, y + 1);
                             break;
                             
-                        case 'C': // Collectible/coin
+                        case 'C': // Collectible coin
                             this.createCollectible(x, y);
                             break;
                             
                         case 'J': // Jump pad
-                            // Create jump pad at this position
-                            const jumpPadGeometry = new THREE.BoxGeometry(1.5, 0.5, 1);
+                            const jumpPadGeometry = new THREE.BoxGeometry(2, 0.5, 1);
                             const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
-                                color: theme.jumpPad, 
+                                color: 0xFFDD00, // Yellow color
                                 transparent: true,
                                 opacity: 0.8
                             });
                             const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
-                            jumpPad.position.set(x, y - 0.25, 0); // Position slightly lower
+                            jumpPad.position.set(x, y, 0);
                             jumpPad.userData.type = 'jumpPad';
-                            jumpPad.userData.width = 1.5;
+                            jumpPad.userData.width = 2;
                             jumpPad.userData.height = 0.5;
                             this.scene.add(jumpPad);
+                            
+                            // Only add to platforms array (not obstacles)
                             this.platforms.push(jumpPad);
                             
-                            // Add bright edges glow effect
+                            // Add glow effect to jump pad
                             const jumpPadEdges = new THREE.EdgesGeometry(jumpPadGeometry);
                             const jumpPadLineMaterial = new THREE.LineBasicMaterial({ 
-                                color: theme.jumpPadEdge, 
+                                color: 0xFFFF00, // Bright yellow for edges
                                 linewidth: 2
                             });
                             const jumpPadWireframe = new THREE.LineSegments(jumpPadEdges, jumpPadLineMaterial);
                             jumpPad.add(jumpPadWireframe);
                             
-                            // Add an arrow indicator
-                            const arrowGeometry = new THREE.BufferGeometry();
-                            const arrowPoints = [
-                                new THREE.Vector3(-0.4, 0, 0),
-                                new THREE.Vector3(0, 0.6, 0),
-                                new THREE.Vector3(0.4, 0, 0)
-                            ];
-                            arrowGeometry.setFromPoints(arrowPoints);
-                            arrowGeometry.setIndex([0, 1, 2]);
-                            
-                            const arrowMaterial = new THREE.MeshBasicMaterial({ 
-                                color: theme.jumpPadEdge, 
-                                side: THREE.DoubleSide
+                            // Add glow effect
+                            const glowGeometry = new THREE.BoxGeometry(2.2, 0.7, 1.1);
+                            const glowMaterial = new THREE.MeshBasicMaterial({
+                                color: 0xFFFF00, // Yellow glow
+                                transparent: true,
+                                opacity: 0.3,
+                                side: THREE.BackSide
                             });
-                            const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-                            arrow.position.set(0, 0.3, 0.1);
-                            jumpPad.add(arrow);
+                            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                            jumpPad.add(glow);
                             
                             break;
-                            
                         case 'P': // Special collectible
                             this.createSpecialCollectible(x, y);
                             break;
@@ -1887,115 +1880,80 @@
                 }
                 
                 createSpike(x, y, direction) {
-                    // Get current theme colors
+                    console.log(`Creating DEADLY SPIKE at ${x}, ${y}, direction: ${direction}`);
+                    
+                    // Size of the spike
+                    const spikeSize = 1.0;
+                    const halfSize = spikeSize / 2;
+                    
+                    // Get current theme
                     const themeIndex = (this.levelManager.currentLevel - 1) % this.themes.length;
                     const theme = this.themes[themeIndex];
                     
-                    // Create a spike obstacle based on direction
-                    const spikeSize = 0.7; // Base size for spikes
-                    const spikeGroup = new THREE.Group();
-                    
-                    // Create the spike shape using triangles
-                    const spikeGeometry = new THREE.BufferGeometry();
-                    
-                    // Adjust vertices based on direction
+                    // Create spike mesh with better triangle definition
                     let vertices;
+                    
                     if (direction === 'up') {
+                        // Upward spike vertices - triangle with point at top
                         vertices = new Float32Array([
-                            0, spikeSize, 0,      // top point
-                            -spikeSize/2, 0, 0,   // bottom left
-                            spikeSize/2, 0, 0     // bottom right
+                            -halfSize, 0, 0,      // left bottom
+                            halfSize, 0, 0,       // right bottom
+                            0, spikeSize, 0       // top point
                         ]);
-                    } else { // down
+                    } else {
+                        // Downward spike vertices - triangle with point at bottom
                         vertices = new Float32Array([
-                            0, -spikeSize, 0,     // bottom point
-                            -spikeSize/2, 0, 0,   // top left
-                            spikeSize/2, 0, 0     // top right
+                            -halfSize, 0, 0,      // left top
+                            halfSize, 0, 0,       // right top
+                            0, -spikeSize, 0      // bottom point
                         ]);
                     }
                     
-                    spikeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-                    spikeGeometry.setIndex([0, 1, 2]); // Create a face
+                    // Create geometry
+                    const geometry = new THREE.BufferGeometry();
+                    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                    geometry.setIndex([0, 1, 2]); // Create a face
+                    geometry.computeVertexNormals();
                     
-                    // Use the theme's obstacle color for the spike
-                    const spikeMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.obstacle || 0xff0000, // Default to red if theme.obstacle is undefined
+                    // Basic material for the spike - use RED for visibility
+                    const material = new THREE.MeshBasicMaterial({
+                        color: 0xFF0000, // Red color for clear visibility
                         side: THREE.DoubleSide
                     });
                     
-                    const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                    // Create mesh
+                    const spike = new THREE.Mesh(geometry, material);
                     
-                    // Create spike outline for Tron-like glow effect using theme colors
-                    const outlineGeometry = new THREE.EdgesGeometry(spikeGeometry);
+                    // Add outline
                     const outlineMaterial = new THREE.LineBasicMaterial({
-                        color: theme.obstacleEdge || 0xffffff, // Default to white if theme.obstacleEdge is undefined
-                        transparent: true,
-                        opacity: 0.9,
+                        color: 0xFFFFFF, // White outline
                         linewidth: 2
                     });
-                    
+                    const outlineGeometry = new THREE.EdgesGeometry(geometry);
                     const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
-                    
-                    // Create primary glow effect around spike using theme colors
-                    const glowGeometry = new THREE.BufferGeometry().copy(spikeGeometry);
-                    const glowMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.obstacleEdge || 0xffffff, // Default to white if theme.obstacleEdge is undefined
-                        side: THREE.DoubleSide,
-                        transparent: true,
-                        opacity: 0.3,
-                        blending: THREE.AdditiveBlending
-                    });
-                    
-                    const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
-                    glowMesh.scale.multiplyScalar(1.15); // Slightly larger than the spike
-                    
-                    // Add all components to the group
-                    spikeGroup.add(spike);
-                    spikeGroup.add(outline);
-                    spikeGroup.add(glowMesh);
+                    spike.add(outline);
                     
                     // Position the spike
-                    spikeGroup.position.set(x, y, 0);
+                    spike.position.set(x, y, 0);
                     
-                    // Add to scene and obstacle list ONLY (not platforms)
-                    this.scene.add(spikeGroup);
-                    this.obstacles.push(spikeGroup);
+                    // Make sure spike is NOT added to platforms array
+                    // Add ONLY to obstacles array
+                    this.scene.add(spike);
+                    this.obstacles.push(spike);
+                    console.log(`Added spike to obstacles array. Count: ${this.obstacles.length}`);
                     
-                    // Add collision data - important for detecting player collision
-                    spikeGroup.userData.type = 'spike';
-                    spikeGroup.userData.width = spikeSize;
-                    spikeGroup.userData.height = spikeSize;
-                    spikeGroup.userData.direction = direction;
-                    
-                    // Add pulsing animation
-                    const initialScale = 1.0;
-                    const glowScale = 1.15;
-                    let glowDirection = 1;
-                    
-                    const animate = () => {
-                        if (!this.isRunning || this.isPaused) return;
-                        
-                        // Subtle pulsing effect for glow
-                        glowMesh.scale.x += 0.003 * glowDirection;
-                        glowMesh.scale.y += 0.003 * glowDirection;
-                        
-                        if (glowMesh.scale.x > glowScale * 1.1) {
-                            glowDirection = -1;
-                        } else if (glowMesh.scale.x < glowScale * 0.9) {
-                            glowDirection = 1;
-                        }
-                        
-                        // Continue animation
-                        requestAnimationFrame(animate);
+                    // Setup user data for collision detection - CRITICAL
+                    spike.userData = {
+                        type: 'spike',
+                        deadly: true,
+                        direction: direction,
+                        width: spikeSize,
+                        height: spikeSize
                     };
                     
-                    // Start animation
-                    animate();
+                    console.log("Spike created with userData:", spike.userData);
                     
-                    // Logging for debugging
-                    console.log(`Created spike at (${x}, ${y}) with direction ${direction}`);
-                    
-                    return spikeGroup;
+                    return spike;
                 }
                 
                 createFloor() {
@@ -2280,96 +2238,126 @@
                 }
                 
                 checkCollisions() {
-                    // Obstacle collisions - check these first so spikes take priority
+                    // DEBUG: Log the player position
+                    console.log(`Player position: ${this.player.position.x.toFixed(2)}, ${this.player.position.y.toFixed(2)}`);
+                    
+                    // ---- FIRST check for SPIKE collisions - highest priority! ----
                     for (let i = 0; i < this.obstacles.length; i++) {
                         const obstacle = this.obstacles[i];
+                        
+                        // Skip invalid obstacles
+                        if (!obstacle || !obstacle.userData) {
+                            continue;
+                        }
+                        
+                        // Only process spikes in this first pass
+                        if (obstacle.userData.type !== 'spike') {
+                            continue;
+                        }
+                        
+                        console.log(`Checking spike at ${obstacle.position.x.toFixed(2)}, ${obstacle.position.y.toFixed(2)}`);
+                        
+                        // Player hitbox - make slightly larger for spikes to ensure detection
                         const playerLeft = this.player.position.x - this.playerSize/2;
                         const playerRight = this.player.position.x + this.playerSize/2;
                         const playerBottom = this.player.position.y - this.playerSize/2;
                         const playerTop = this.player.position.y + this.playerSize/2;
                         
-                        // Check if this is a spike
-                        const isSpike = obstacle.userData.type === 'spike';
+                        // Spike hitbox calculation
+                        const spikeSize = obstacle.userData.width || 1;
+                        const spikeLeft = obstacle.position.x - spikeSize/2;
+                        const spikeRight = obstacle.position.x + spikeSize/2;
+                        let spikeBottom, spikeTop;
                         
-                        // If this is a spike, we need to adjust the collision detection based on direction
-                        let obstacleWidth, obstacleHeight, obstacleLeft, obstacleRight, obstacleBottom, obstacleTop;
+                        if (obstacle.userData.direction === 'up') {
+                            spikeBottom = obstacle.position.y;
+                            spikeTop = obstacle.position.y + spikeSize;
+                        } else { // down spike
+                            spikeBottom = obstacle.position.y - spikeSize;
+                            spikeTop = obstacle.position.y;
+                        }
                         
-                        if (isSpike) {
-                            const spikeSize = obstacle.userData.width;
-                            const spikeDirection = obstacle.userData.direction;
+                        // Check for collision with spike
+                        if (playerRight > spikeLeft && 
+                            playerLeft < spikeRight && 
+                            playerBottom < spikeTop && 
+                            playerTop > spikeBottom) {
                             
-                            // For spikes, we need to adjust the hitbox based on the triangle shape
-                            obstacleWidth = spikeSize;
-                            obstacleHeight = spikeSize;
+                            // PLAYER HIT A SPIKE!
+                            console.log("SPIKE COLLISION DETECTED! GAME OVER!");
                             
-                            obstacleLeft = obstacle.position.x - spikeSize/2;
-                            obstacleRight = obstacle.position.x + spikeSize/2;
+                            // Create dramatic death effect
+                            this.createDeathEffect(this.player.position.x, this.player.position.y);
                             
-                            if (spikeDirection === 'up') {
-                                // For upward spikes, the top is at position.y + spikeSize
-                                // and the bottom is at position.y
-                                obstacleBottom = obstacle.position.y;
-                                obstacleTop = obstacle.position.y + spikeSize;
-                            } else {
-                                // For downward spikes, the top is at position.y
-                                // and the bottom is at position.y - spikeSize
-                                obstacleBottom = obstacle.position.y - spikeSize;
-                                obstacleTop = obstacle.position.y;
-                            }
-                            
-                            // Use a simplified collision box for spikes - just check if the player overlaps with the spike
-                            if (playerRight > obstacleLeft + 0.1 && 
-                                playerLeft < obstacleRight - 0.1 &&
-                                playerBottom < obstacleTop - 0.1 && 
-                                playerTop > obstacleBottom + 0.1) {
-                                
-                                // Player hit a spike!
-                                console.log("Player hit a spike! Position:", obstacle.position);
-                                
-                                // Create death effect
-                                this.createDeathEffect(this.player.position.x, this.player.position.y);
-                                
-                                // Game over
-                                this.gameOver();
-                                return; // Exit immediately to prevent platform collision checks
-                            }
-                        } else {
-                            // Regular obstacle collision with reduced hitbox for better gameplay feel
-                            obstacleWidth = obstacle.userData.width;
-                            obstacleHeight = obstacle.userData.height;
-                            obstacleLeft = obstacle.position.x - obstacleWidth/2;
-                            obstacleRight = obstacle.position.x + obstacleWidth/2;
-                            obstacleBottom = obstacle.position.y - obstacleHeight/2;
-                            obstacleTop = obstacle.position.y + obstacleHeight/2;
-                            
-                            // Ensure the obstacle is not below ground or hidden within ground
-                            if (obstacleTop <= this.groundY + 0.5) {
-                                continue; // Skip obstacles that are hidden in the ground
-                            }
-                            
-                            if (playerRight > obstacleLeft + 0.2 && 
-                                playerLeft < obstacleRight - 0.2 &&
-                                playerBottom < obstacleTop - 0.2 && 
-                                playerTop > obstacleBottom + 0.2) {
-                                this.gameOver();
-                                return; // Exit immediately
-                            }
+                            // End the game
+                            this.gameOver();
+                            return; // Exit immediately
                         }
                     }
                     
-                    // Platform collisions
+                    // ---- Then check for other OBSTACLE collisions ----
+                    for (let i = 0; i < this.obstacles.length; i++) {
+                        const obstacle = this.obstacles[i];
+                        
+                        // Skip invalid obstacles or spikes (already checked)
+                        if (!obstacle || !obstacle.userData || obstacle.userData.type === 'spike') {
+                            continue;
+                        }
+                        
+                        // Player hitbox
+                        const playerLeft = this.player.position.x - this.playerSize/2 + 0.1;
+                        const playerRight = this.player.position.x + this.playerSize/2 - 0.1;
+                        const playerBottom = this.player.position.y - this.playerSize/2 + 0.1;
+                        const playerTop = this.player.position.y + this.playerSize/2 - 0.1;
+                        
+                        // Obstacle hitbox
+                        const obstacleWidth = obstacle.userData.width || 1;
+                        const obstacleHeight = obstacle.userData.height || 1;
+                        const obstacleLeft = obstacle.position.x - obstacleWidth/2;
+                        const obstacleRight = obstacle.position.x + obstacleWidth/2;
+                        const obstacleBottom = obstacle.position.y - obstacleHeight/2;
+                        const obstacleTop = obstacle.position.y + obstacleHeight/2;
+                        
+                        // Skip obstacles below ground
+                        if (obstacleTop <= this.groundY + 0.5) {
+                            continue;
+                        }
+                        
+                        // Check for collision
+                        if (playerRight > obstacleLeft && 
+                            playerLeft < obstacleRight &&
+                            playerBottom < obstacleTop && 
+                            playerTop > obstacleBottom) {
+                            
+                            // Regular obstacle collision
+                            this.gameOver();
+                            return; // Exit immediately
+                        }
+                    }
+                    
+                    // ---- Then check for PLATFORM collisions ----
                     this.onPlatform = false;
                     
-                    this.platforms.forEach(platform => {
-                        if (platform === this.ground) return; // Skip ground platform
+                    for (let i = 0; i < this.platforms.length; i++) {
+                        const platform = this.platforms[i];
                         
+                        // Skip ground
+                        if (platform === this.ground) continue;
+                        
+                        // Skip invalid platforms
+                        if (!platform || !platform.userData) {
+                            continue;
+                        }
+                        
+                        // Player hitbox
                         const playerBottom = this.player.position.y - this.playerSize/2;
                         const playerTop = this.player.position.y + this.playerSize/2;
                         const playerLeft = this.player.position.x - this.playerSize/2;
                         const playerRight = this.player.position.x + this.playerSize/2;
                         
-                        const platformWidth = platform.userData.width;
-                        const platformHeight = platform.userData.height;
+                        // Platform hitbox
+                        const platformWidth = platform.userData.width || 1;
+                        const platformHeight = platform.userData.height || 1;
                         const platformTop = platform.position.y + platformHeight/2;
                         const platformBottom = platform.position.y - platformHeight/2;
                         const platformLeft = platform.position.x - platformWidth/2;
@@ -2381,15 +2369,15 @@
                             
                             // Coming from above (landing on platform)
                             if (this.playerVelocity.y < 0 && 
-                                playerBottom - this.playerVelocity.y > platformTop - 0.1) { // Add small tolerance
+                                playerBottom - this.playerVelocity.y > platformTop - 0.1) {
                                 
                                 // Land on platform
-                                this.player.position.y = platformTop + this.playerSize/2 + 0.01; // Small offset to prevent sticking
+                                this.player.position.y = platformTop + this.playerSize/2 + 0.01;
                                 this.playerVelocity.y = 0;
                                 this.isJumping = false;
                                 this.onPlatform = true;
                                 
-                                // Immediately remove jump path when landing on platform
+                                // Remove jump path
                                 if (this.jumpPath) {
                                     this.scene.remove(this.jumpPath);
                                     this.jumpPath = null;
@@ -2405,25 +2393,25 @@
                             }
                             // Hit ceiling
                             else if (this.playerVelocity.y > 0 && 
-                                    playerTop - this.playerVelocity.y < platformBottom + 0.1) { // Add small tolerance
-                                this.player.position.y = platformBottom - this.playerSize/2 - 0.01; // Small offset
+                                    playerTop - this.playerVelocity.y < platformBottom + 0.1) {
+                                this.player.position.y = platformBottom - this.playerSize/2 - 0.01;
                                 this.playerVelocity.y = 0;
                             }
                         }
-                    });
+                    }
                     
-                    // Collectible collisions
+                    // ---- Finally check for COLLECTIBLE collisions ----
                     for (let i = this.collectibles.length - 1; i >= 0; i--) {
                         const coin = this.collectibles[i];
-                        if (coin.userData.collected) continue;
+                        if (!coin || coin.userData.collected) continue;
                         
                         const playerLeft = this.player.position.x - this.playerSize/2;
                         const playerRight = this.player.position.x + this.playerSize/2;
                         const playerBottom = this.player.position.y - this.playerSize/2;
                         const playerTop = this.player.position.y + this.playerSize/2;
                         
-                        const coinWidth = coin.userData.width;
-                        const coinHeight = coin.userData.height;
+                        const coinWidth = coin.userData.width || 1;
+                        const coinHeight = coin.userData.height || 1;
                         const coinLeft = coin.position.x - coinWidth/2;
                         const coinRight = coin.position.x + coinWidth/2;
                         const coinBottom = coin.position.y - coinHeight/2;
@@ -2436,7 +2424,7 @@
                             coin.userData.collected = true;
                             this.scene.remove(coin);
                             
-                            // Add to score - check for special coin value
+                            // Add to score
                             const coinValue = coin.userData.value || 100;
                             this.score += coinValue;
                             this.updateScoreDisplay();
