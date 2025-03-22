@@ -1,0 +1,16 @@
+{
+  "title": "Double Trouble",
+  "description": "Parallel sets of platforms with spikes and coins.",
+  "width": 20,
+  "height": 8,
+  "layout": [
+    "....................",
+    "...W......C......W..",
+    "...BBB.........BBB...",
+    "...B.C.........B.C...",
+    "...BBB....J....BBB...",
+    "....................",
+    "S..............C..E..",
+    "BBBBBBBBBBBBBBBBBBBB"
+  ]
+}

@@ -1,22 +1,16 @@
 {
-  "title": "Advanced Platforms",
-  "description": "More complex platform configuration",
+  "title": "Spikes Challenge",
+  "description": "Introduces spikes and small platforming.",
   "width": 20,
   "height": 8,
-  "theme": {
-    "background": "#800040",
-    "platforms": "#FF0066",
-    "player": "#99FF00",
-    "accent": "#FFDD00"
-  },
   "layout": [
-    ".....................",
-    ".....................",
-    ".....................",
-    "....BB...............",
-    "..................BB.",
-    "...........BB........",
-    "....^^^..............",
-    "..B.................."
+    "....................",
+    "....................",
+    "....................",
+    "..........W...W.....",
+    "....C....BBB..W.....",
+    "....................",
+    "S.........C......E..",
+    "BBBBBBBBBBBBBBBBBBBB"
   ]
-} 
+}

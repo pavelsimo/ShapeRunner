@@ -1,0 +1,16 @@
+{
+  "title": "Tight Corridors",
+  "description": "Spike-lined ceiling above narrow platforms.",
+  "width": 20,
+  "height": 8,
+  "layout": [
+    "....................",
+    "W.................V.",
+    ".W...............V..",
+    "....BBB........BBB...",
+    "....B.C........B.C...",
+    "....BBB........BBB...",
+    "S...............C.E..",
+    "BBBBBBBBBBBBBBBBBBBB"
+  ]
+}

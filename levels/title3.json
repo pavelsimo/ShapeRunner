@@ -1,22 +1,16 @@
 {
-  "title": "Amber Circuit",
-  "description": "A warm-colored level with orange tones",
+  "title": "Coin Heaven",
+  "description": "Lots of coins and some jump pads.",
   "width": 20,
   "height": 8,
-  "theme": {
-    "background": "#331100",
-    "platforms": "#FF6600",
-    "player": "#FFBB22",
-    "accent": "#FFDD00"
-  },
   "layout": [
-    ".....................",
-    ".....................",
-    "........C............",
-    "......BBBB...........",
-    "..BBB................",
-    ".....................",
-    "B.........BBB........",
-    "...^...^.....^...^..."
+    "....................",
+    "....................",
+    "....................",
+    "....C...J...C...C...",
+    "....BBB.............",
+    "...........J.....C..",
+    "S.........C......E..",
+    "BBBBBBBBBBBBBBBBBBBB"
   ]
 }

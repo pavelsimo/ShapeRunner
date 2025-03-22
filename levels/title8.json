@@ -1,0 +1,16 @@
+{
+  "title": "Coin Bonanza",
+  "description": "A tile loaded with coins and a special collectible.",
+  "width": 20,
+  "height": 8,
+  "layout": [
+    "....................",
+    "..C..C..C..C..C.....",
+    ".........J..........",
+    "...C.............C...",
+    ".........P..........",
+    "....................",
+    "S.............C...E.",
+    "BBBBBBBBBBBBBBBBBBBB"
+  ]
+}

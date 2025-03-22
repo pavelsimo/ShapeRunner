@@ -1,22 +1,16 @@
 {
-  "title": "End Gate",
-  "description": "The endpoint for each level",
-  "width": 10,
+  "title": "Final Frontier",
+  "description": "A climactic tile with spikes, jump pads, and high-value collectibles.",
+  "width": 20,
   "height": 8,
-  "theme": {
-    "background": "#003344",
-    "platforms": "#00BBCC",
-    "player": "#FFAA00",
-    "accent": "#FFFF66"
-  },
   "layout": [
-    "...........",
-    "...........",
-    "...........",
-    "...........",
-    "........P..",
-    "........BBB",
-    "...........",
-    "..........."
+    "....................",
+    "..W........V........",
+    "...C....BBB....C....",
+    "......J...P....J....",
+    "...BBB........BBB....",
+    "............C.......",
+    "S...............E...",
+    "BBBBBBBBBBBBBBBBBBBB"
   ]
 }

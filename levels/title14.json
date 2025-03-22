@@ -1,0 +1,16 @@
+{
+  "title": "Leap of Faith",
+  "description": "One big jump over a gap and a spike overhead.",
+  "width": 20,
+  "height": 8,
+  "layout": [
+    "....................",
+    ".............V......",
+    ".........C..........",
+    "..BBB...............",
+    "..B.C....J..........",
+    "..BBB...........C...",
+    "S.................E.",
+    "BBBBBBBBBBBBBBBBBBBB"
+  ]
+}

@@ -1,22 +1,16 @@
 {
-  "title": "Cyber Waters",
-  "description": "Cyan-themed jumping challenges",
+  "title": "High Platforms",
+  "description": "Focus on elevated platforms to encourage jumping.",
   "width": 20,
   "height": 8,
-  "theme": {
-    "background": "#00445E",
-    "platforms": "#00CCFF",
-    "player": "#FF9900",
-    "accent": "#FFFFFF"
-  },
   "layout": [
-    ".....................",
-    "........C............",
-    "......BBBB...........",
-    ".....................",
-    "....J................",
-    "...BBB..........BBB..",
-    "...............B.....",
-    "^.^.^.^.^.^.^.^.^.^.^."
+    "....................",
+    "....BBB........BBB..",
+    "....B.C........B.C..",
+    "....BBB.J......BBB..",
+    "....................",
+    "....................",
+    "S.........C......E..",
+    "BBBBBBBBBBBBBBBBBBBB"
   ]
-} 
+}

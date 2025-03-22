@@ -1,22 +1,16 @@
 {
-  "title": "Portal Finale",
-  "description": "Final section with a portal to the next level",
+  "title": "Rising Tides",
+  "description": "Small platforms with spikes and coins at varying heights.",
   "width": 20,
   "height": 8,
-  "theme": {
-    "background": "#AA0055",
-    "platforms": "#FF00AA",
-    "player": "#88FF00",
-    "accent": "#FFFF33"
-  },
   "layout": [
-    ".....................",
-    "..................P..",
-    "...................B.",
-    "..........C..........",
-    "........BBBB.........",
-    ".....J................",
-    "...BBB................",
-    "^.^.^.^.^............"
+    "....................",
+    "...BBB..............",
+    "...BBB....W..C......",
+    ".....J....BBB.......",
+    ".........C..........",
+    "....................",
+    "S.............C..E..",
+    "BBBBBBBBBBBBBBBBBBBB"
   ]
 }

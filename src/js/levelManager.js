@@ -22,7 +22,9 @@ export class LevelManager {
         try {
             // Load all level title files
             const titles = [
-                'title1', 'title2', 'title3', 'title4', 'title5',
+                'title1', 'title2', 'title3', 'title4', 'title5', 
+                'title6', 'title7', 'title8', 'title9', 'title10', 
+                'title11', 'title12', 'title13', 'title14', 'title15',
                 'start', 'end'
             ];
             
@@ -152,7 +154,7 @@ export class LevelManager {
         
         // MODIFIED: Theme selection - Make theme part of the level instead of the title
         // Get all available themes from title files
-        const availableThemes = [];
+        const availableThemes = []; 
         for (const title of [startTitle, ...availableTitles, endTitle]) {
             if (title.theme) {
                 availableThemes.push(title.theme);

@@ -1,22 +1,16 @@
 {
-  "title": "Starting Line",
-  "description": "The player starts here on every level",
-  "width": 10,
+  "title": "Basic Start",
+  "description": "An introductory tile with minimal obstacles.",
+  "width": 20,
   "height": 8,
-  "theme": {
-    "background": "#000000",
-    "platforms": "#00BFFF",
-    "player": "#FF4500",
-    "accent": "#20E080"
-  },
   "layout": [
-    "...........",
-    "...........",
-    "...........",
-    "...........",
-    "...........",
-    "....S......",
-    "BBBB.......",
-    "..........."
+    "....................",
+    "....................",
+    "....................",
+    "....................",
+    "....................",
+    "....................",
+    "S.........C......E..",
+    "BBBBBBBBBBBBBBBBBBBB"
   ]
-} 
+}

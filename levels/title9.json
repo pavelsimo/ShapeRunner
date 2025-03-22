@@ -1,0 +1,16 @@
+{
+  "title": "Twisty Platforms",
+  "description": "Platforms arranged in zigzag fashion.",
+  "width": 20,
+  "height": 8,
+  "layout": [
+    "....................",
+    "........BBB.........",
+    "...BBB........BBB....",
+    ".C.B....J....B.C.....",
+    "...BBB........BBB....",
+    "....................",
+    "S.............C...E.",
+    "BBBBBBBBBBBBBBBBBBBB"
+  ]
+}
