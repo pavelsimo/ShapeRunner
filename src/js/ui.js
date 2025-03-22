@@ -77,17 +77,33 @@ export class GameUI {
         this.levelDisplay.style.transform = 'translateX(-50%)';
         this.levelDisplay.style.color = '#00FFFF';
         this.levelDisplay.style.fontFamily = "'Orbitron', 'Rajdhani', sans-serif";
-        this.levelDisplay.style.fontSize = '24px';
+        this.levelDisplay.style.fontSize = '28px';
         this.levelDisplay.style.fontWeight = 'bold';
-        this.levelDisplay.style.padding = '8px 20px';
+        this.levelDisplay.style.padding = '10px 25px';
         this.levelDisplay.style.borderRadius = '8px';
-        this.levelDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        this.levelDisplay.style.border = '2px solid #00FFFF';
-        this.levelDisplay.style.boxShadow = '0 0 10px #00FFFF, inset 0 0 5px #00FFFF';
-        this.levelDisplay.style.textShadow = '0 0 5px #00FFFF';
+        this.levelDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        this.levelDisplay.style.border = '3px solid #00FFFF';
+        this.levelDisplay.style.boxShadow = '0 0 15px #00FFFF, inset 0 0 8px #00FFFF';
+        this.levelDisplay.style.textShadow = '0 0 8px #00FFFF';
         this.levelDisplay.style.letterSpacing = '2px';
-        this.levelDisplay.style.zIndex = '10';
+        this.levelDisplay.style.zIndex = '9999';
+        this.levelDisplay.style.pointerEvents = 'none';
         this.levelDisplay.textContent = 'LEVEL 1';
+        this.levelDisplay.style.animation = 'pulseBrighter 2s infinite';
+        
+        // Add animation for pulsing
+        if (!document.getElementById('level-display-animation')) {
+            const styleSheet = document.createElement('style');
+            styleSheet.id = 'level-display-animation';
+            styleSheet.textContent = `
+                @keyframes pulseBrighter {
+                    0% { opacity: 0.9; }
+                    50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+                    100% { opacity: 0.9; }
+                }
+            `;
+            document.head.appendChild(styleSheet);
+        }
         
         // Add level display to the container
         this.container.appendChild(this.levelDisplay);

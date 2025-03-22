@@ -1240,13 +1240,11 @@
                         this.updateJumpPath();
                     }
                     
-                    // Fade out jump path when landing
+                    // Immediately remove jump path when not jumping
                     if (!this.isJumping && this.jumpPath) {
-                        this.jumpPath.material.opacity -= deltaTime * 2;
-                        if (this.jumpPath.material.opacity <= 0) {
-                            this.scene.remove(this.jumpPath);
-                            this.jumpPath = null;
-                        }
+                        this.scene.remove(this.jumpPath);
+                        this.jumpPath = null;
+                        this.jumpHistoryPoints = [];
                     }
                     
                     // Trail particles have been removed per request
@@ -1258,13 +1256,11 @@
                         this.isJumping = false;
                         this.onGround = true;
                         
-                        // Gradually fade out jump path after landing
+                        // Immediately remove jump path when landing on ground
                         if (this.jumpPath) {
-                            this.jumpPath.material.opacity -= deltaTime * 3;
-                            if (this.jumpPath.material.opacity <= 0) {
-                                this.scene.remove(this.jumpPath);
-                                this.jumpPath = null;
-                            }
+                            this.scene.remove(this.jumpPath);
+                            this.jumpPath = null;
+                            this.jumpHistoryPoints = [];
                         }
                     } else {
                         this.onGround = false;
@@ -1347,6 +1343,13 @@
                                 this.playerVelocity.y = 0;
                                 this.isJumping = false;
                                 this.onPlatform = true;
+                                
+                                // Immediately remove jump path when landing on platform
+                                if (this.jumpPath) {
+                                    this.scene.remove(this.jumpPath);
+                                    this.jumpPath = null;
+                                    this.jumpHistoryPoints = [];
+                                }
                                 
                                 // Check if it's a jump pad
                                 if (platform.userData.type === 'jumpPad') {

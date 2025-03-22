@@ -224,6 +224,8 @@ export class Game {
         // Update UI
         if (this.ui) {
             this.ui.updateDistance(Math.floor(this.distance));
+            // Ensure level display is up to date
+            this.updateLevelDisplay();
         }
     }
 
@@ -744,6 +746,11 @@ NOTE:
             
             console.log(`Color scheme changed from ${previousColorScheme} to ${this.currentColorScheme}`);
             
+            // Update level display to show the next level visually before transition
+            this.currentLevel++;
+            this.updateLevelDisplay();
+            this.currentLevel--; // Restore correct level for proper transition
+            
             // Add a short delay before transitioning to the next level
             // Ensure the transition happens by forcing it after the timeout
             this.portalTransitionStarted = true;
@@ -800,14 +807,7 @@ NOTE:
         }
         
         // Update level display
-        const levelDisplay = document.getElementById('level-display');
-        if (levelDisplay) {
-            levelDisplay.style.color = accentColor;
-            levelDisplay.style.borderColor = accentColor;
-            levelDisplay.style.boxShadow = `0 0 10px ${accentColor}, inset 0 0 5px ${accentColor}`;
-            levelDisplay.style.textShadow = `0 0 5px ${accentColor}`;
-            levelDisplay.textContent = `LEVEL ${this.currentLevel}`;
-        }
+        this.updateLevelDisplay();
         
         // Update retry button in the original game-over UI
         const retryBtn = document.getElementById('retry-btn');
@@ -898,10 +898,7 @@ NOTE:
         this.currentLevel = levelNumber;
         
         // Update level display UI
-        const levelDisplay = document.getElementById('level-display');
-        if (levelDisplay) {
-            levelDisplay.textContent = `LEVEL ${levelNumber}`;
-        }
+        this.updateLevelDisplay();
         
         // Create a new level with the current level design
         if (this.levels[levelNumber - 1]) {
@@ -1058,5 +1055,82 @@ NOTE:
         
         // Always look at player
         this.camera.lookAt(this.player.mesh.position);
+    }
+
+    // Update the level display UI
+    updateLevelDisplay() {
+        const levelDisplay = document.getElementById('level-display');
+        if (levelDisplay) {
+            levelDisplay.textContent = `LEVEL ${this.currentLevel}`;
+            
+            // Update styling to make it more noticeable
+            if (this.colorSchemes && this.currentColorScheme) {
+                const accentColor = this.convertToHex(this.colorSchemes[this.currentColorScheme].accent);
+                levelDisplay.style.color = accentColor;
+                levelDisplay.style.borderColor = accentColor;
+                levelDisplay.style.boxShadow = `0 0 15px ${accentColor}, inset 0 0 8px ${accentColor}`;
+                levelDisplay.style.textShadow = `0 0 8px ${accentColor}`;
+            }
+        }
+    }
+
+    start() {
+        this.isRunning = true;
+        this.startGameLoop();
+        
+        // Create player if not already created
+        if (!this.player) {
+            this.createPlayer();
+        }
+        
+        // Load the initial level
+        this.loadLevel(1);
+        
+        // Make sure level display is updated
+        this.updateLevelDisplay();
+    }
+
+    init() {
+        // Set up game environment
+        this.setupEnvironment();
+        
+        // Initialize game components
+        this.initializeComponents();
+        
+        // Create initial level
+        this.initializeLevels();
+        
+        // Start the game
+        this.start();
+        
+        // Debug - check and create level display if it doesn't exist
+        console.log("Checking for level display element...");
+        let levelDisplay = document.getElementById('level-display');
+        if (!levelDisplay) {
+            console.log("Level display not found, creating it manually");
+            levelDisplay = document.createElement('div');
+            levelDisplay.id = 'level-display';
+            levelDisplay.style.position = 'absolute';
+            levelDisplay.style.top = '20px';
+            levelDisplay.style.left = '50%';
+            levelDisplay.style.transform = 'translateX(-50%)';
+            levelDisplay.style.color = '#00FFFF';
+            levelDisplay.style.fontFamily = "'Orbitron', 'Rajdhani', sans-serif";
+            levelDisplay.style.fontSize = '28px';
+            levelDisplay.style.fontWeight = 'bold';
+            levelDisplay.style.padding = '10px 25px';
+            levelDisplay.style.borderRadius = '8px';
+            levelDisplay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            levelDisplay.style.border = '3px solid #00FFFF';
+            levelDisplay.style.boxShadow = '0 0 15px #00FFFF, inset 0 0 8px #00FFFF';
+            levelDisplay.style.textShadow = '0 0 8px #00FFFF';
+            levelDisplay.style.letterSpacing = '2px';
+            levelDisplay.style.zIndex = '9999';
+            levelDisplay.style.pointerEvents = 'none';
+            document.body.appendChild(levelDisplay);
+        }
+        
+        // Update the level display initially
+        this.updateLevelDisplay();
     }
 } 
