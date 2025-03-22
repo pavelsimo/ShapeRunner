@@ -1714,8 +1714,8 @@
                     
                     // Immediately remove jump path when not jumping
                     if (!this.isJumping && this.jumpPath) {
-                        this.scene.remove(this.jumpPath);
-                        this.jumpPath = null;
+                            this.scene.remove(this.jumpPath);
+                            this.jumpPath = null;
                         this.jumpHistoryPoints = [];
                     }
                     
@@ -1730,8 +1730,8 @@
                         
                         // Immediately remove jump path when landing on ground
                         if (this.jumpPath) {
-                            this.scene.remove(this.jumpPath);
-                            this.jumpPath = null;
+                                this.scene.remove(this.jumpPath);
+                                this.jumpPath = null;
                             this.jumpHistoryPoints = [];
                         }
                     } else {
@@ -2206,6 +2206,16 @@
                     
                     // Check if player has entered the portal
                     if (this.portal && this.portal.userData) {
+                        // Calculate distance between player and portal center
+                        const distanceToPortal = Math.sqrt(
+                            Math.pow(this.player.position.x - this.portal.position.x, 2) +
+                            Math.pow(this.player.position.y - this.portal.position.y, 2)
+                        );
+                        
+                        // Distance threshold to trigger proximity teleport (4 units)
+                        const proximityThreshold = 4.0;
+                        
+                        // Original collision detection
                         const playerLeft = this.player.position.x - this.playerSize/2;
                         const playerRight = this.player.position.x + this.playerSize/2;
                         const playerBottom = this.player.position.y - this.playerSize/2;
@@ -2216,13 +2226,23 @@
                         const portalBottom = this.portal.position.y - this.portal.userData.height/2;
                         const portalTop = this.portal.position.y + this.portal.userData.height/2;
                         
-                        // Check for collision with the portal
-                        if (playerRight > portalLeft && 
+                        // Player is either touching the portal OR close enough to it
+                        if ((playerRight > portalLeft && 
                             playerLeft < portalRight &&
                             playerBottom < portalTop && 
-                            playerTop > portalBottom) {
-                            // Player has entered the portal
-                            logDebug("Player entered portal - level complete!");
+                            playerTop > portalBottom) || 
+                            distanceToPortal < proximityThreshold) {
+                            
+                            // Visual indicator that proximity detection triggered (only for proximity)
+                            if (distanceToPortal < proximityThreshold && 
+                                !(playerRight > portalLeft && 
+                                  playerLeft < portalRight &&
+                                  playerBottom < portalTop && 
+                                  playerTop > portalBottom)) {
+                                logDebug("Portal proximity detected - teleporting!");
+                            } else {
+                                logDebug("Player entered portal - level complete!");
+                            }
                             
                             // Immediately remove jump path if it exists
                             if (this.jumpPath) {
