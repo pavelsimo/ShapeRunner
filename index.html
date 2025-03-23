@@ -213,6 +213,8 @@
                 this.retryBtn.addEventListener('click', () => this.restart());
                 window.addEventListener('keydown', this.handleKeyDown.bind(this));
                 window.addEventListener('resize', this.handleResize.bind(this));
+                // Add mouse click event listener for jumping
+                window.addEventListener('click', () => this.jump());
 
                 // Game properties
                 this.isRunning = false;
@@ -434,9 +436,13 @@
                 this.player.add(mainMesh);
                 this.playerMainMesh = mainMesh;
 
+                // Create a lighter color for the inner box
+                const innerColor = new THREE.Color(theme.player);
+                innerColor.multiplyScalar(1.4); // Make the color 40% brighter
+
                 const innerGeometry = new THREE.BoxGeometry(this.playerSize * 0.6, this.playerSize * 0.6, this.playerSize * 0.5);
                 const innerMaterial = new THREE.MeshBasicMaterial({
-                    color: theme.player,
+                    color: innerColor,
                     transparent: true,
                     opacity: 0.9
                 });
@@ -853,27 +859,9 @@
 
             handleKeyDown(event) {
                 if (!this.isRunning || this.isPaused) return;
-
+                
                 if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
-                    // Prevent repeated jumping if already in the air and not near a platform
-                    const canJump = this.onGround || this.onPlatform ||
-                        (this.playerVelocity.y > -3 && this.playerVelocity.y <= 0);
-
-                    if (canJump && !this.isJumping) {
-                        this.playerVelocity.y = this.jumpForce;
-                        this.isJumping = true;
-                        this.onGround = false;
-                        this.onPlatform = false;
-                        this.createJumpParticles();
-
-                        if (this.showJumpPath) {
-                            this.jumpHistoryPoints = [];
-                            if (this.jumpPath) {
-                                this.scene.remove(this.jumpPath);
-                                this.jumpPath = null;
-                            }
-                        }
-                    }
+                    this.jump();
                 }
                 if (event.code === 'ArrowRight') {
                     this.playerVelocity.x = 10;
@@ -1264,7 +1252,10 @@
                     }
                     this.player.children.forEach(child => {
                         if (child.geometry && child.geometry.type === 'BoxGeometry' && child.geometry.parameters.width === this.playerSize * 0.6) {
-                            child.material.color.set(theme.player);
+                            // Make the inner box brighter than the main color
+                            const innerColor = new THREE.Color(theme.player);
+                            innerColor.multiplyScalar(1.4); // Make it 40% brighter
+                            child.material.color.set(innerColor);
                         }
                     });
                     if (this.playerWireframe) {
@@ -1367,12 +1358,42 @@
                     clearInterval(flashInterval);
                     this.isInvincible = false;
                     
-                    // Reset player opacity
+                    // Reset player opacity and colors
+                    const theme = this.getTheme();
+                    
                     this.player.children.forEach(child => {
                         if (child.isMesh) {
+                            // Reset opacity for all meshes
                             child.material.opacity = 0.9;
+                            
+                            // Reset main mesh color
+                            if (child === this.playerMainMesh) {
+                                child.material.color.set(theme.player);
+                            }
+                            // Reset inner box color (40% brighter)
+                            else if (child.geometry && 
+                                     child.geometry.type === 'BoxGeometry' && 
+                                     child.geometry.parameters.width === this.playerSize * 0.6) {
+                                const innerColor = new THREE.Color(theme.player);
+                                innerColor.multiplyScalar(1.4);
+                                child.material.color.set(innerColor);
+                            }
+                            // Reset glow color
+                            else if (child.geometry && 
+                                     child.geometry.type === 'BoxGeometry' && 
+                                     child.geometry.parameters.width === this.playerSize * 1.3) {
+                                child.material.color.set(theme.player);
+                            }
                         }
                     });
+                    
+                    // Reset wireframe color
+                    if (this.playerWireframe) {
+                        this.playerWireframe.material.color.set(theme.playerEdge || theme.player);
+                    }
+                    
+                    // Update the current theme color tracking
+                    this.currentPlayerThemeColor = theme.player;
                 }, 1500);
             }
 
@@ -1948,6 +1969,29 @@
                 this.finalScore.textContent = `SCORE: ${Math.floor(this.score)}`;
                 this.gameOverUI.style.display = 'block';
             }
+
+            // Add this new method to handle jumping
+            jump() {
+                // Prevent repeated jumping if already in the air and not near a platform
+                const canJump = this.onGround || this.onPlatform || 
+                               (this.playerVelocity.y > -3 && this.playerVelocity.y <= 0);
+                
+                if (canJump && !this.isJumping && this.isRunning && !this.isPaused) {
+                    this.playerVelocity.y = this.jumpForce;
+                    this.isJumping = true;
+                    this.onGround = false;
+                    this.onPlatform = false;
+                    this.createJumpParticles();
+                    
+                    if (this.showJumpPath) {
+                        this.jumpHistoryPoints = [];
+                        if (this.jumpPath) {
+                            this.scene.remove(this.jumpPath);
+                            this.jumpPath = null;
+                        }
+                    }
+                }
+            }
         }
 
         // Initialize game.
@@ -1960,7 +2004,7 @@
         }, 10000);
 
         // Display control instructions.
-        logDebug("CONTROLS: Press SPACE or UP ARROW to jump");
+        logDebug("CONTROLS: Press SPACE or UP ARROW to jump, or CLICK the mouse");
         logDebug("Press RIGHT ARROW for temporary speed boost");
         logDebug("Game automatically moves forward");
         logDebug("Avoid spikes and collect coins!");
