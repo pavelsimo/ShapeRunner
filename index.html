@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ShapeRunner</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    /* Optional default CSS for UI elements */
-  </style>
 </head>
 <body>
   <div id="ui">
@@ -92,199 +89,23 @@
               "     ",
               "     ",
               "     ",
-              "E    ",
+              "   E ",
               "BBBBB"
             ],
-            "title1": [
-              "     ",
+            "tile1": [
               "     ",
               "  C  ",
+              "     ",
               "  B  ",
-              "     ",
+              " W   ",
               "BBBBB"
             ],
-            "title2": [
-              "     ",
-              "  C  ",
-              "     ",
-              "    B",
-              "C    ",
-              "BBBBB"
-            ],
-            "title3": [
+            "tile2": [
+              " V   ",
               "     ",
               "C   C",
-              "     ",
-              "  B  ",
-              "  J  ",
-              "BBBBB"
-            ],
-            "title4": [
-              "     ",
-              "     ",
-              "C C C",
-              "     ",
-              "     ",
-              "BBBBB"
-            ],
-            "title5": [
-              "     ",
-              "   C ",
-              "  B  ",
-              " B   ",
-              "C    ",
-              "BBBBB"
-            ],
-            "title6": [
-              "     ",
-              "C   C",
-              "     ",
-              "BB   ",
-              "     ",
-              "BBBBB"
-            ],
-            "title7": [
-              "     ",
-              "   C ",
-              " C   ",
-              "   B ",
-              " B   ",
-              "BBBBB"
-            ],
-            "title8": [
-              "     ",
-              "   C ",
-              "     ",
-              "B BBB",
-              "     ",
-              "BBBBB"
-            ],
-            "title9": [
-              "     ",
-              "  P  ",
-              "     ",
-              "B B B",
-              "     ",
-              "BBBBB"
-            ],
-            "title10": [
-              "     ",
-              "C   C",
-              "     ",
-              "     ",
-              "B   B",
-              "BBBBB"
-            ],
-            "jump1": [
-              "     ",
-              "  C  ",
-              "     ",
-              "     ",
-              "  J  ",
-              "BBBBB"
-            ],
-            "jump2": [
-              "  C  ",
-              "     ",
-              "     ",
-              "     ",
-              "  J  ",
-              "BBBBB"
-            ],
-            "jump3": [
-              "     ",
-              "     ",
-              "  C  ",
-              "     ",
-              "  J  ",
-              "BBBBB"
-            ],
-            "jump4": [
-              "   C ",
-              "     ",
-              "     ",
-              "     ",
-              " J   ",
-              "BBBBB"
-            ],
-            "jump5": [
-              " C   ",
-              "     ",
-              "     ",
-              "     ",
-              "   J ",
-              "BBBBB"
-            ],
-            "special1": [
-              "     ",
-              "     ",
-              "  P  ",
-              "     ",
-              "     ",
-              "BBBBB"
-            ],
-            "special2": [
-              "     ",
-              "  P  ",
-              "     ",
-              "B B B",
-              "     ",
-              "BBBBB"
-            ],
-            "special3": [
-              "     ",
-              " C C ",
-              "  P  ",
-              "     ",
-              " B B ",
-              "BBBBB"
-            ],
-            "special4": [
-              "  C  ",
-              " C C ",
-              "  P  ",
-              "     ",
-              "  B  ",
-              "BBBBB"
-            ],
-            "spike1": [
-              "     ",
-              "     ",
-              "     ",
-              "  C  ",
-              " BWB ",
-              "BBBBB"
-            ],
-            "spike2": [
-              "     ",
-              "     ",
-              " C C ",
-              "     ",
-              "BWWWB",
-              "BBBBB"
-            ],
-            "spike3": [
-              "     ",
-              "  C  ",
-              "     ",
-              "B   B",
-              " WWW ",
-              "BBBBB"
-            ],
-            "spike4": [
-              "     ",
-              "     ",
-              "C   C",
-              "  B  ",
-              " W W ",
-              "BBBBB"
-            ],
-            "spike5": [
-              "     ",
-              "  P  ",
-              "     ",
-              "B B B",
-              " W W ",
+              "BBBBB",
+              "VVVVV",
               "BBBBB"
             ]
           };
@@ -306,7 +127,6 @@
         generateLevel(levelNumber, difficulty = 1) {
           try {
             this.currentLevel = levelNumber;
-            // Only log once per level generation
             logDebug(`Generating level ${levelNumber}`);
             
             const levelDisplay = document.getElementById('level-display');
@@ -323,65 +143,21 @@
               }
             };
 
-            // Always start with the "start" section.
+            // Always start with the "start" section
             appendTitle(this.levelTitles['start']);
 
-            // Randomly choose sections (excluding 'start' and 'end')
-            const availableTitles = Object.keys(this.levelTitles).filter(name => name !== 'start' && name !== 'end');
-            const baseNumSections = 18;
+            // Calculate number of sections based on level number
+            const baseNumSections = 10; 
             const additionalSections = Math.min(Math.floor(levelNumber / 2), 5);
             const numSections = baseNumSections + additionalSections;
-            const selectedSections = [];
-
-            for (let i = 0; i < numSections; i++) {
-              const randomIndex = Math.floor(Math.random() * availableTitles.length);
-              const randomTitle = availableTitles[randomIndex];
-              selectedSections.push(this.levelTitles[randomTitle]);
-            }
-
-            // Ensure at least one jump pad is present after level 1.
-            if (levelNumber > 1) {
-              let hasJumpPad = selectedSections.some(section => section.join('').includes('J'));
-              if (!hasJumpPad) {
-                const jumpSections = ['jump1', 'jump2', 'jump3', 'jump4', 'jump5'];
-                const randomJump = jumpSections[Math.floor(Math.random() * jumpSections.length)];
-                const replaceIndex = Math.floor(Math.random() * selectedSections.length);
-                selectedSections[replaceIndex] = this.levelTitles[randomJump];
-              }
-            }
-
-            // Ensure spikes appear in all levels for challenge
-            let hasSpike = selectedSections.some(section => section.join('').includes('W'));
-            if (!hasSpike) {
-              const spikeSections = ['spike1', 'spike2', 'spike3', 'spike4', 'spike5'];
-              const randomSpike = spikeSections[Math.floor(Math.random() * spikeSections.length)];
-              const replaceIndex = Math.max(2, Math.floor(Math.random() * selectedSections.length));
-              selectedSections[replaceIndex] = this.levelTitles[randomSpike];
-            }
             
-            // Add more spikes in higher levels
-            if (levelNumber >= 2) {
-              const spikeSections = ['spike1', 'spike2', 'spike3', 'spike4', 'spike5'];
-              const additionalSpikes = Math.min(Math.floor(levelNumber / 2), 3);
-              for (let i = 0; i < additionalSpikes; i++) {
-                const randomSpike = spikeSections[Math.floor(Math.random() * spikeSections.length)];
-                const replaceIndex = 3 + Math.floor(Math.random() * (selectedSections.length - 5));
-                selectedSections[replaceIndex] = this.levelTitles[randomSpike];
-              }
+            // Randomly choose between tile1 and tile2 for each section
+            for (let i = 0; i < numSections; i++) {
+              const tileType = Math.random() < 0.5 ? 'tile1' : 'tile2';
+              appendTitle(this.levelTitles[tileType]);
             }
 
-            // For levels 3+ ensure a special collectible appears.
-            if (levelNumber >= 3) {
-              let hasSpecial = selectedSections.some(section => section.join('').includes('P'));
-              if (!hasSpecial) {
-                const specialSections = ['special1', 'special2', 'special3', 'special4'];
-                const randomSpecial = specialSections[Math.floor(Math.random() * specialSections.length)];
-                const replaceIndex = 1 + Math.floor(Math.random() * (selectedSections.length - 2));
-                selectedSections[replaceIndex] = this.levelTitles[randomSpecial];
-              }
-            }
-
-            selectedSections.forEach(section => appendTitle(section));
+            // Always end with the "end" section
             appendTitle(this.levelTitles['end']);
 
             const levelString = combinedLevel.map(row => row.join('')).join('\n');
@@ -817,8 +593,12 @@
               platform.add(wireframe);
               break;
             case 'W':
-              // Use an upward spike for 'W' tiles.
+              // Upward spike - should be on platforms or ground
               this.createSpike(x, y, 'up');
+              break;
+            case 'V':
+              // Downward spike - should be attached to ceilings
+              this.createSpike(x, y, 'down');
               break;
             case 'S':
               this.startPosition = { x, y: y + 0.5 };
@@ -869,19 +649,23 @@
           const halfSize = spikeSize / 2;
           const theme = this.getTheme();
           let vertices;
+          
           if (direction === 'up') {
+            // Upward spike - point should be at the top
             vertices = new Float32Array([
               -halfSize, 0, 0,
               halfSize, 0, 0,
               0, spikeSize, 0
             ]);
           } else {
+            // Downward spike - point should be at the bottom
             vertices = new Float32Array([
               -halfSize, 0, 0,
               halfSize, 0, 0,
               0, -spikeSize, 0
             ]);
           }
+          
           const geometry = new THREE.BufferGeometry();
           geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
           geometry.setIndex([0, 1, 2]);
@@ -902,9 +686,24 @@
           const outlineGeometry = new THREE.EdgesGeometry(geometry);
           const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
           spike.add(outline);
+          
+          // Add a subtle glow effect
+          const glowGeometry = new THREE.BufferGeometry().copy(geometry);
+          const glowMaterial = new THREE.MeshBasicMaterial({
+            color: theme.obstacle,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+          });
+          const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+          glow.scale.set(1.2, 1.2, 1.2);
+          spike.add(glow);
+          
           spike.position.set(x, y, 0);
           this.scene.add(spike);
           this.obstacles.push(spike);
+          
           spike.userData = {
             type: 'spike',
             deadly: true,
@@ -912,6 +711,7 @@
             width: spikeSize,
             height: spikeSize
           };
+          
           return spike;
         }
 
@@ -1092,6 +892,7 @@
             const obstacle = this.obstacles[i];
             if (!obstacle || !obstacle.userData) continue;
             if (obstacle.userData.type !== 'spike') continue;
+            
             const playerLeft = this.player.position.x - this.playerSize/2;
             const playerRight = this.player.position.x + this.playerSize/2;
             const playerBottom = this.player.position.y - this.playerSize/2;
@@ -1099,19 +900,54 @@
             const spikeSize = obstacle.userData.width || 1;
             const spikeLeft = obstacle.position.x - spikeSize/2;
             const spikeRight = obstacle.position.x + spikeSize/2;
+            
             let spikeBottom, spikeTop;
             if (obstacle.userData.direction === 'up') {
+              // For upward spike, the bottom is at the position and top is above
               spikeBottom = obstacle.position.y;
               spikeTop = obstacle.position.y + spikeSize;
             } else {
+              // For downward spike, the top is at the position and bottom is below
               spikeBottom = obstacle.position.y - spikeSize;
               spikeTop = obstacle.position.y;
             }
-            if (playerRight > spikeLeft && playerLeft < spikeRight && playerBottom < spikeTop && playerTop > spikeBottom) {
-              logDebug("SPIKE COLLISION DETECTED! GAME OVER!");
-              this.createDeathEffect(this.player.position.x, this.player.position.y);
-              this.gameOver();
-              return;
+            
+            // Use a more precise collision for triangular spikes
+            const spikeMiddleX = obstacle.position.x;
+            const spikeMiddleY = obstacle.userData.direction === 'up' 
+                ? obstacle.position.y + spikeSize/2 
+                : obstacle.position.y - spikeSize/2;
+                
+            // Simple AABB collision detection first
+            if (playerRight > spikeLeft && playerLeft < spikeRight && 
+                playerBottom < spikeTop && playerTop > spikeBottom) {
+                
+              // Refine collision with spike shape consideration
+              if (obstacle.userData.direction === 'up') {
+                // For upward spikes, player needs to be closer to the tip the higher they are
+                const relativeX = Math.abs(this.player.position.x - spikeMiddleX);
+                const relativeY = this.player.position.y - obstacle.position.y;
+                const collisionSlope = spikeSize/2; // Half width at the spike's height
+                
+                if (relativeX < (spikeSize/2) * (1 - relativeY/spikeSize)) {
+                  logDebug("SPIKE COLLISION DETECTED! GAME OVER!");
+                  this.createDeathEffect(this.player.position.x, this.player.position.y);
+                  this.gameOver();
+                  return;
+                }
+              } else {
+                // For downward spikes, player needs to be closer to the tip the lower they are
+                const relativeX = Math.abs(this.player.position.x - spikeMiddleX);
+                const relativeY = obstacle.position.y - this.player.position.y;
+                const collisionSlope = spikeSize/2;
+                
+                if (relativeX < (spikeSize/2) * (1 - relativeY/spikeSize)) {
+                  logDebug("SPIKE COLLISION DETECTED! GAME OVER!");
+                  this.createDeathEffect(this.player.position.x, this.player.position.y);
+                  this.gameOver();
+                  return;
+                }
+              }
             }
           }
           // Check other obstacle collisions.
