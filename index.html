@@ -113,16 +113,16 @@
                             "     ",
                             "     ",
                             "  C  ",
-                            "  W  ",
-                            "BBBBB"
+                            "     ",
+                            "BWWWB"
                         ],
                         "tile4": [
                             "     ",
                             "     ",
                             "     ",
                             " BBB ",
-                            "     ",
-                            "WWWWW"
+                            " WWW ",
+                            "BBBBB"
                         ]                                      
           };
         }
@@ -579,7 +579,7 @@
                         for (let row = 0; row < rows.length; row++) {
                             const invertedRow = rows.length - 1 - row;
                             const char = rows[invertedRow][col];
-              // Adjust yPos to ensure tiles align precisely with the grid
+              // Set yPos to align with grid cell bottom for consistent positioning
               const yPos = this.groundY + row * tileSpacing;
                             const isBottomRow = (row === 0);
                             if (char === 'B' && isBottomRow) {
@@ -595,78 +595,70 @@
                 }
                 
                 createTile(type, x, y, isBottomRow) {
-          const theme = this.getTheme();
-          const platformHeight = 1;
-          
-          // Skip B blocks in bottom row as they'll be part of the main floor
-          if (isBottomRow && type === 'B') return;
+                    const theme = this.getTheme();
+                    const platformHeight = 1;
+                    
+                    // Skip B blocks in bottom row as they'll be part of individual floor tiles
+                    if (isBottomRow && type === 'B') return;
                     
                     switch (type) {
-            case 'B':
-              const platformGeometry = new THREE.BoxGeometry(1, 1, 1);
+                        case 'B':
+                            const platformGeometry = new THREE.BoxGeometry(1, 1, 1);
                             const platformMaterial = new THREE.MeshBasicMaterial({ 
                                 color: theme.platform, 
                                 transparent: true,
                                 opacity: 0.8
                             });
                             const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-              // Position platform in center of grid cell
-              platform.position.set(x, y + platformHeight/2, 0);
-              platform.userData = { type: 'platform', width: 1, height: 1 };
+                            // Position platform in center of grid cell
+                            platform.position.set(x, y + platformHeight/2, 0);
+                            platform.userData = { type: 'platform', width: 1, height: 1 };
                             this.scene.add(platform);
                             this.platforms.push(platform);
                             const edges = new THREE.EdgesGeometry(platformGeometry);
-              const lineMaterial = new THREE.LineBasicMaterial({ color: theme.platformEdge, linewidth: 2 });
+                            const lineMaterial = new THREE.LineBasicMaterial({ color: theme.platformEdge, linewidth: 2 });
                             const wireframe = new THREE.LineSegments(edges, lineMaterial);
                             platform.add(wireframe);
                             break;
-              case 'W':
-              // Handle upward spikes differently for floor (bottom row) vs other platforms
-              if (isBottomRow) {
-                // For bottom row, position spikes directly on the floor surface
-                // Floor top is at groundY + 1.0
-                this.createSpike(x, this.groundY + 1.0, 'up');
-              } else {
-                // For other rows, position spikes on top of platforms
-                // Platform center is at y + platformHeight/2, so top is at y + platformHeight
-                this.createSpike(x, y + platformHeight - 1.0, 'up');
-              }
+                        case 'W':
+                            // Handle all upward spikes consistently - position them at the grid cell y-coordinate
+                            this.createSpike(x, y, 'up');
                             break;
-            case 'V':
-              // Downward spike
-              this.createSpike(x, y, 'down');
+                        case 'V':
+                            // Downward spike
+                            this.createSpike(x, y, 'down');
                             break;
-            case 'S':
-              this.startPosition = { x, y: y + 0.5 };
-              if (this.player && !this.player.hasMovedFromStart) {
-                                    this.player.position.set(x, y + 0.5, 0);
+                        case 'S':
+                            this.startPosition = { x, y: y + 0.5 };
+                            if (this.player && !this.player.hasMovedFromStart) {
+                                this.player.position.set(x, y + 0.5, 0);
                             }
                             break;
-            case 'E':
-              this.createPortal(x, y + 0.5);
+                        case 'E':
+                            this.createPortal(x, y + 0.5);
                             break;
-            case 'C':
-              this.createCollectible(x, y + 0.5);
+                        case 'C':
+                            this.createCollectible(x, y + 0.5);
                             break;
-            case 'J':
-              const jumpPadGeometry = new THREE.BoxGeometry(1, 0.5, 1);
+                        case 'J':
+                            const jumpPadGeometry = new THREE.BoxGeometry(1, 0.5, 1);
                             const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xFFDD00,
+                                color: 0xFFDD00,
                                 transparent: true,
                                 opacity: 0.8
                             });
                             const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
-              jumpPad.position.set(x, y + 0.25, 0);
-              jumpPad.userData = { type: 'jumpPad', width: 1, height: 0.5 };
+                            jumpPad.position.set(x, y + 0.25, 0);
+                            jumpPad.userData = { type: 'jumpPad', width: 1, height: 0.5 };
                             this.scene.add(jumpPad);
                             this.platforms.push(jumpPad);
                             const jumpPadEdges = new THREE.EdgesGeometry(jumpPadGeometry);
-              const jumpPadLineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFF00, linewidth: 2 });
+                            const jumpPadLineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFF00, linewidth: 2 });
                             const jumpPadWireframe = new THREE.LineSegments(jumpPadEdges, jumpPadLineMaterial);
                             jumpPad.add(jumpPadWireframe);
-              const glowGeometry = new THREE.BoxGeometry(1.2, 0.7, 1.1);
+                            const glowGeometry = new THREE.BoxGeometry(1.2, 0.7, 1.1);
                             const glowMaterial = new THREE.MeshBasicMaterial({
-                color: 0xFFFF00,
+                                color: 0xFFFF00,
                                 transparent: true,
                                 opacity: 0.3,
                                 side: THREE.BackSide
@@ -674,7 +666,7 @@
                             const glow = new THREE.Mesh(glowGeometry, glowMaterial);
                             jumpPad.add(glow);
                             break;
-            case 'P':
+                        case 'P':
                             this.createSpecialCollectible(x, y);
                             break;
                     }
@@ -762,44 +754,52 @@
                         logDebug("No floor tiles found in level data");
                         return;
                     }
-          const theme = this.getTheme();
-                    const positions = [...this.floorTilePositions].sort((a, b) => a - b);
-                    const minX = positions[0];
-                    const maxX = positions[positions.length - 1];
-          const width = maxX - minX + 1;
-                    const centerX = (maxX + minX) / 2;
-          const groundGeometry = new THREE.BoxGeometry(width, 1, 1);
-                    const groundMaterial = new THREE.MeshBasicMaterial({ 
-                        color: theme.platform, 
-                                transparent: true,
-                        opacity: 0.6
-                    });
-                    this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
-          // Position the floor at groundY + 0.5 to center it on the grid, making it a standard platform
-          this.ground.position.set(centerX, this.groundY + 0.5, 0);
-                    this.scene.add(this.ground);
-                    this.platforms.push(this.ground);
-                    const groundEdges = new THREE.EdgesGeometry(groundGeometry);
-          const groundLineMaterial = new THREE.LineBasicMaterial({ color: theme.platformEdge, linewidth: 2 });
-                    const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
-                    this.ground.add(groundWireframe);
-                    const groundGlowGeometry = new THREE.BoxGeometry(width, 0.05, 1.5);
-                    const groundGlowMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.platformEdge,
-                                transparent: true,
-                        opacity: 0.15,
-                                blending: THREE.AdditiveBlending
-                            });
-                    const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
-          groundGlow.position.y = 0.3;
-                    this.ground.add(groundGlow);
                     
-          // Update the ground's userData to match other platforms
-          this.ground.userData = { 
-            type: 'platform', 
-            width: width, 
-            height: 1
-          };
+                    // Create individual floor tiles instead of one continuous floor
+                    const theme = this.getTheme();
+                    
+                    for (let xPos of this.floorTilePositions) {
+                        const groundGeometry = new THREE.BoxGeometry(1, 1, 1);
+                        const groundMaterial = new THREE.MeshBasicMaterial({ 
+                            color: theme.platform, 
+                            transparent: true,
+                            opacity: 0.6
+                        });
+                        
+                        const groundTile = new THREE.Mesh(groundGeometry, groundMaterial);
+                        groundTile.position.set(xPos, this.groundY + 0.5, 0);
+                        groundTile.userData = { 
+                            type: 'platform', 
+                            width: 1, 
+                            height: 1
+                        };
+                        
+                        this.scene.add(groundTile);
+                        this.platforms.push(groundTile);
+                        
+                        const groundEdges = new THREE.EdgesGeometry(groundGeometry);
+                        const groundLineMaterial = new THREE.LineBasicMaterial({ 
+                            color: theme.platformEdge, 
+                            linewidth: 2 
+                        });
+                        const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
+                        groundTile.add(groundWireframe);
+                        
+                        // Add subtle glow effect to each tile
+                        const groundGlowGeometry = new THREE.BoxGeometry(1, 0.05, 1.5);
+                        const groundGlowMaterial = new THREE.MeshBasicMaterial({
+                            color: theme.platformEdge,
+                            transparent: true,
+                            opacity: 0.15,
+                            blending: THREE.AdditiveBlending
+                        });
+                        const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
+                        groundGlow.position.y = 0.3;
+                        groundTile.add(groundGlow);
+                    }
+                    
+                    // We no longer store a reference to a single ground object
+                    this.ground = null;
                 }
                 
                 handleKeyDown(event) {
@@ -811,9 +811,9 @@
                         this.createJumpParticles();
                     }
                     if (event.code === 'ArrowRight') {
-            this.playerVelocity.x = 10;
+                        this.playerVelocity.x = 10;
                         setTimeout(() => {
-              if (this.isRunning) this.playerVelocity.x = 5;
+                            if (this.isRunning) this.playerVelocity.x = 5;
                         }, 500);
                     }
                     if (event.code === 'KeyP' || event.code === 'Escape') {
@@ -899,32 +899,25 @@
                         this.jumpHistoryPoints = [];
                     }
                     
-          // Check for floor collision - ensure player sits exactly on floor
-          const floorTop = this.groundY + 1.0; // Top of floor is at groundY + 1.0
-          const playerBottom = this.player.position.y - this.playerSize/2;
+                    // For grid reference, bottom of the world
+                    const absoluteBottom = this.groundY - 5;
                     
-          if (playerBottom < floorTop && this.playerVelocity.y <= 0) {
-            this.player.position.y = floorTop + this.playerSize/2;
-                        this.playerVelocity.y = 0;
-                        this.isJumping = false;
-                        this.onGround = true;
-                        if (this.jumpPath) {
-                                this.scene.remove(this.jumpPath);
-                                this.jumpPath = null;
-                            this.jumpHistoryPoints = [];
-                        }
-                    } else {
-                        this.onGround = false;
+                    // Check if player has fallen off the platforms entirely
+                    if (this.player.position.y < absoluteBottom) {
+                        this.gameOver();
+                        return;
                     }
                     
+                    // Other behavior continues as before - platform collisions will handle 
+                    // both the individual floor tiles and other platforms
                     this.checkCollisions();
                     this.updatePortal(deltaTime);
                     this.camera.position.x = this.player.position.x;
                     this.score += deltaTime * 10;
                     this.updateScoreDisplay();
                     if (this.playerGlow) {
-            const scaleFactor = 1 + Math.sin(performance.now() * 0.005) * 0.1;
-            this.playerGlow.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                        const scaleFactor = 1 + Math.sin(performance.now() * 0.005) * 0.1;
+                        this.playerGlow.scale.set(scaleFactor, scaleFactor, scaleFactor);
                     }
                     if (this.playerMainMesh) {
                         this.playerMainMesh.rotation.z = 0;
@@ -933,23 +926,88 @@
                     this.platforms.forEach(platform => {
                         if (platform.userData.type === 'jumpPad' && platform.userData.glowMesh) {
                             const glow = platform.userData.glowMesh;
-              glow.scale.set(
-                1 + Math.sin(performance.now() * 0.01) * 0.2,
-                1 + Math.sin(performance.now() * 0.01) * 0.2,
-                1
-              );
+                            glow.scale.set(
+                                1 + Math.sin(performance.now() * 0.01) * 0.2,
+                                1 + Math.sin(performance.now() * 0.01) * 0.2,
+                                1
+                            );
                             glow.material.opacity = 0.3 + Math.sin(performance.now() * 0.01) * 0.2;
                         }
                     });
                 }
                 
                 checkCollisions() {
-          // Check spike collisions first.
+                    // Reset ground state at the beginning of collision checks
+                    this.onGround = false;
+                    this.onPlatform = false;
+                    
+                    // Check platform collisions first
+                    for (let i = 0; i < this.platforms.length; i++) {
+                        const platform = this.platforms[i];
+                        if (!platform || !platform.userData) continue;
+                        
+                        const playerBottom = this.player.position.y - this.playerSize/2;
+                        const playerTop = this.player.position.y + this.playerSize/2;
+                        const playerLeft = this.player.position.x - this.playerSize/2;
+                        const playerRight = this.player.position.x + this.playerSize/2;
+                        
+                        const platformWidth = platform.userData.width || 1;
+                        const platformHeight = platform.userData.height || 1;
+                        const platformTop = platform.position.y + platformHeight/2;
+                        const platformBottom = platform.position.y - platformHeight/2;
+                        const platformLeft = platform.position.x - platformWidth/2;
+                        const platformRight = platform.position.x + platformWidth/2;
+                        
+                        if (playerRight > platformLeft && playerLeft < platformRight &&
+                            playerBottom < platformTop && playerTop > platformBottom) {
+                            
+                            // Landing on top of a platform (including floor tiles)
+                            if (this.playerVelocity.y < 0 && playerBottom - this.playerVelocity.y > platformTop - 0.1) {
+                                this.player.position.y = platformTop + this.playerSize/2 + 0.01;
+                                this.playerVelocity.y = 0;
+                                this.isJumping = false;
+                                
+                                // Handle whether it's a floor tile or other platform
+                                if (platformBottom <= this.groundY + 0.1) {
+                                    this.onGround = true;
+                                } else {
+                                    this.onPlatform = true;
+                                }
+                                
+                                if (this.jumpPath) {
+                                    this.scene.remove(this.jumpPath);
+                                    this.jumpPath = null;
+                                    this.jumpHistoryPoints = [];
+                                }
+                                
+                                if (platform.userData.type === 'jumpPad') {
+                                    this.playerVelocity.y = this.jumpForce * 1.5;
+                                    this.isJumping = true;
+                                    this.onPlatform = false;
+                                    this.onGround = false;
+                                }
+                            } 
+                            // Hitting the bottom of a platform
+                            else if (this.playerVelocity.y > 0 && playerTop - this.playerVelocity.y < platformBottom + 0.1) {
+                                this.player.position.y = platformBottom - this.playerSize/2 - 0.01;
+                                this.playerVelocity.y = 0;
+                            }
+                        }
+                    }
+                    
+                    // Continue with spike collisions
+                    this.checkSpikeCollisions();
+                    
+                    // Check collectible collisions
+                    this.checkCollectibleCollisions();
+                }
+                
+                checkSpikeCollisions() {
                     for (let i = 0; i < this.obstacles.length; i++) {
                         const obstacle = this.obstacles[i];
-            if (!obstacle || !obstacle.userData) continue;
-            if (obstacle.userData.type !== 'spike') continue;
-            
+                        if (!obstacle || !obstacle.userData) continue;
+                        if (obstacle.userData.type !== 'spike') continue;
+                        
                         const playerLeft = this.player.position.x - this.playerSize/2;
                         const playerRight = this.player.position.x + this.playerSize/2;
                         const playerBottom = this.player.position.y - this.playerSize/2;
@@ -958,132 +1016,101 @@
                         const spikeLeft = obstacle.position.x - spikeSize/2;
                         const spikeRight = obstacle.position.x + spikeSize/2;
                         
-            let spikeBottom, spikeTop;
+                        let spikeBottom, spikeTop;
                         if (obstacle.userData.direction === 'up') {
-              // For upward spikes, the bottom is at the position and top is above
+                            // For upward spikes, the bottom is at the position and top is above
                             spikeBottom = obstacle.position.y;
                             spikeTop = obstacle.position.y + spikeSize;
-            } else {
-              // For downward spikes, the top is at the position and bottom is below
-              // Adjust for the new positioning
+                        } else {
+                            // For downward spikes, the top is at the position and bottom is below
                             spikeBottom = obstacle.position.y - spikeSize;
                             spikeTop = obstacle.position.y;
                         }
                         
-            // Use a more precise collision for triangular spikes
-            const spikeMiddleX = obstacle.position.x;
-            const spikeMiddleY = obstacle.userData.direction === 'up' 
-                ? obstacle.position.y + spikeSize/2 
-                : obstacle.position.y - spikeSize/2;
-                
-            // Simple AABB collision detection first
-            if (playerRight > spikeLeft && playerLeft < spikeRight && 
-                playerBottom < spikeTop && playerTop > spikeBottom) {
-                
-              // Refine collision with spike shape consideration
-              if (obstacle.userData.direction === 'up') {
-                // For upward spikes, player needs to be closer to the tip the higher they are
-                const relativeX = Math.abs(this.player.position.x - spikeMiddleX);
-                const relativeY = this.player.position.y - obstacle.position.y;
-                const collisionSlope = spikeSize/2; // Half width at the spike's height
-                
-                if (relativeX < (spikeSize/2) * (1 - relativeY/spikeSize) + 0.2) {
-                  logDebug("SPIKE COLLISION DETECTED! GAME OVER!");
-                            this.createDeathEffect(this.player.position.x, this.player.position.y);
-                  this.gameOver();
-                  return;
-                }
-              } else {
-                // For downward spikes, player needs to be closer to the tip the lower they are
-                // Make collision area larger to match visual appearance
-                const relativeX = Math.abs(this.player.position.x - spikeMiddleX);
-                const relativeY = obstacle.position.y - this.player.position.y;
-                const collisionSlope = spikeSize/2;
-                
-                // Increase the collision area by reducing the slope factor and adding a buffer
-                if (relativeX < (spikeSize/2) * (1 - relativeY/spikeSize) + 0.3) {
-                  logDebug("DOWNWARD SPIKE COLLISION DETECTED! GAME OVER!");
-                  this.createDeathEffect(this.player.position.x, this.player.position.y);
-                            this.gameOver();
-                  return;
+                        // Use a more precise collision for triangular spikes
+                        const spikeMiddleX = obstacle.position.x;
+                        const spikeMiddleY = obstacle.userData.direction === 'up' 
+                            ? obstacle.position.y + spikeSize/2 
+                            : obstacle.position.y - spikeSize/2;
+                            
+                        // Simple AABB collision detection first
+                        if (playerRight > spikeLeft && playerLeft < spikeRight && 
+                            playerBottom < spikeTop && playerTop > spikeBottom) {
+                            
+                            // Refine collision with spike shape consideration
+                            if (obstacle.userData.direction === 'up') {
+                                // For upward spikes, player needs to be closer to the tip the higher they are
+                                const relativeX = Math.abs(this.player.position.x - spikeMiddleX);
+                                const relativeY = this.player.position.y - obstacle.position.y;
+                                const collisionSlope = spikeSize/2; // Half width at the spike's height
+                                
+                                if (relativeX < (spikeSize/2) * (1 - relativeY/spikeSize) + 0.2) {
+                                    logDebug("SPIKE COLLISION DETECTED! GAME OVER!");
+                                    this.createDeathEffect(this.player.position.x, this.player.position.y);
+                                    this.gameOver();
+                                    return;
+                                }
+                            } else {
+                                // For downward spikes, player needs to be closer to the tip the lower they are
+                                const relativeX = Math.abs(this.player.position.x - spikeMiddleX);
+                                const relativeY = obstacle.position.y - this.player.position.y;
+                                const collisionSlope = spikeSize/2;
+                                
+                                // Increase the collision area by reducing the slope factor and adding a buffer
+                                if (relativeX < (spikeSize/2) * (1 - relativeY/spikeSize) + 0.3) {
+                                    logDebug("DOWNWARD SPIKE COLLISION DETECTED! GAME OVER!");
+                                    this.createDeathEffect(this.player.position.x, this.player.position.y);
+                                    this.gameOver();
+                                    return;
+                                }
+                            }
                         }
                     }
-            }
-          }
-          // Check other obstacle collisions.
+                    
+                    // Check other obstacle collisions
                     for (let i = 0; i < this.obstacles.length; i++) {
                         const obstacle = this.obstacles[i];
-            if (!obstacle || !obstacle.userData || obstacle.userData.type === 'spike') continue;
+                        if (!obstacle || !obstacle.userData || obstacle.userData.type === 'spike') continue;
+                        
                         const playerLeft = this.player.position.x - this.playerSize/2 + 0.1;
                         const playerRight = this.player.position.x + this.playerSize/2 - 0.1;
                         const playerBottom = this.player.position.y - this.playerSize/2 + 0.1;
                         const playerTop = this.player.position.y + this.playerSize/2 - 0.1;
+                        
                         const obstacleWidth = obstacle.userData.width || 1;
                         const obstacleHeight = obstacle.userData.height || 1;
                         const obstacleLeft = obstacle.position.x - obstacleWidth/2;
                         const obstacleRight = obstacle.position.x + obstacleWidth/2;
                         const obstacleBottom = obstacle.position.y - obstacleHeight/2;
                         const obstacleTop = obstacle.position.y + obstacleHeight/2;
-            if (obstacleTop <= this.groundY + 0.5) continue;
-            if (playerRight > obstacleLeft && playerLeft < obstacleRight &&
-                playerBottom < obstacleTop && playerTop > obstacleBottom) {
+                        
+                        if (obstacleTop <= this.groundY + 0.5) continue;
+                        
+                        if (playerRight > obstacleLeft && playerLeft < obstacleRight &&
+                            playerBottom < obstacleTop && playerTop > obstacleBottom) {
                             this.gameOver();
-              return;
+                            return;
                         }
                     }
-          // Check platform collisions.
-                    this.onPlatform = false;
-                    for (let i = 0; i < this.platforms.length; i++) {
-                        const platform = this.platforms[i];
-                        if (platform === this.ground) continue;
-            if (!platform || !platform.userData) continue;
-                        const playerBottom = this.player.position.y - this.playerSize/2;
-                        const playerTop = this.player.position.y + this.playerSize/2;
-                        const playerLeft = this.player.position.x - this.playerSize/2;
-                        const playerRight = this.player.position.x + this.playerSize/2;
-                        const platformWidth = platform.userData.width || 1;
-                        const platformHeight = platform.userData.height || 1;
-                        const platformTop = platform.position.y + platformHeight/2;
-                        const platformBottom = platform.position.y - platformHeight/2;
-                        const platformLeft = platform.position.x - platformWidth/2;
-                        const platformRight = platform.position.x + platformWidth/2;
-                        if (playerRight > platformLeft && playerLeft < platformRight &&
-                            playerBottom < platformTop && playerTop > platformBottom) {
-              if (this.playerVelocity.y < 0 && playerBottom - this.playerVelocity.y > platformTop - 0.1) {
-                                this.player.position.y = platformTop + this.playerSize/2 + 0.01;
-                                this.playerVelocity.y = 0;
-                                this.isJumping = false;
-                                this.onPlatform = true;
-                                if (this.jumpPath) {
-                                    this.scene.remove(this.jumpPath);
-                                    this.jumpPath = null;
-                                    this.jumpHistoryPoints = [];
-                                }
-                                if (platform.userData.type === 'jumpPad') {
-                                    this.playerVelocity.y = this.jumpForce * 1.5;
-                                    this.isJumping = true;
-                                    this.onPlatform = false;
-                                }
-              } else if (this.playerVelocity.y > 0 && playerTop - this.playerVelocity.y < platformBottom + 0.1) {
-                                this.player.position.y = platformBottom - this.playerSize/2 - 0.01;
-                                this.playerVelocity.y = 0;
-                            }
-                        }
-                    }
-          // Check collectible collisions.
+                }
+                
+                checkCollectibleCollisions() {
                     for (let i = this.collectibles.length - 1; i >= 0; i--) {
                         const coin = this.collectibles[i];
                         if (!coin || coin.userData.collected) continue;
+                        
                         const playerLeft = this.player.position.x - this.playerSize/2;
                         const playerRight = this.player.position.x + this.playerSize/2;
                         const playerBottom = this.player.position.y - this.playerSize/2;
                         const playerTop = this.player.position.y + this.playerSize/2;
+                        
                         const coinWidth = coin.userData.width || 1;
                         const coinHeight = coin.userData.height || 1;
                         const coinLeft = coin.position.x - coinWidth/2;
                         const coinRight = coin.position.x + coinWidth/2;
                         const coinBottom = coin.position.y - coinHeight/2;
                         const coinTop = coin.position.y + coinHeight/2;
+                        
                         if (playerRight > coinLeft && playerLeft < coinRight &&
                             playerBottom < coinTop && playerTop > coinBottom) {
                             coin.userData.collected = true;
@@ -1500,10 +1527,6 @@
                     if (this.portal) {
                         this.scene.remove(this.portal);
                         this.portal = null;
-                    }
-                    if (this.ground) {
-                        this.scene.remove(this.ground);
-                        this.ground = null;
                     }
                     this.clearGrids();
                     this.updateUITheme();
