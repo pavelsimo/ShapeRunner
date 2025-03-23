@@ -118,11 +118,11 @@
                         "BWWWB"
                     ],
                     "tile4": [
-                        "     ",
-                        "     ",
+                        "    C",
+                        "    B",
                         "     ",
                         "  J  ",
-                        "     ",
+                        " W   ",
                         "BBBBB"
                     ]
                 };
@@ -224,6 +224,7 @@
                 this.gravity = 25;
                 this.portal = null;
                 this.portalPosition = {x: 0, y: 0};
+                this.isInvincible = false; // Add invincibility flag
 
                 // Level themes
                 this.themes = [
@@ -388,6 +389,7 @@
                 gridHelper.material.opacity = 0.3;
                 gridHelper.material.blending = THREE.AdditiveBlending;
                 gridHelper.rotation.x = Math.PI / 2;
+                gridHelper.isGridHelper = true;
                 this.scene.add(gridHelper);
 
                 const secondaryGridSize = 500;
@@ -398,6 +400,7 @@
                 secondaryGridHelper.material.opacity = 0.4;
                 secondaryGridHelper.material.blending = THREE.AdditiveBlending;
                 secondaryGridHelper.rotation.x = Math.PI / 2;
+                secondaryGridHelper.isGridHelper = true;
                 this.scene.add(secondaryGridHelper);
 
                 const gridPlaneGeometry = new THREE.PlaneGeometry(gridSize, gridSize);
@@ -409,6 +412,7 @@
                 const gridPlane = new THREE.Mesh(gridPlaneGeometry, gridPlaneMaterial);
                 gridPlane.position.y = this.groundY - 0.45;
                 gridPlane.rotation.x = -Math.PI / 2;
+                gridPlane.isGridPlane = true;
                 this.scene.add(gridPlane);
             }
 
@@ -557,21 +561,48 @@
             }
 
             createLevel() {
+                // First clear the existing level completely
                 this.clearLevel();
+                
+                // Reset arrays for new level objects
                 this.platforms = [];
                 this.obstacles = [];
                 this.collectibles = [];
                 this.floorTilePositions = [];
+                this.startPosition = null; // Reset start position
 
+                // Set the theme for the new level
                 const theme = this.getTheme();
                 this.scene.background = new THREE.Color(theme.background);
+                
+                // Update UI to match the theme
                 document.getElementById('score-display').style.textShadow =
                     `0 0 10px ${theme.scoreGlow}, 0 0 20px ${theme.scoreGlow}, 0 0 30px ${theme.scoreGlow}`;
                 document.getElementById('level-display').style.textShadow =
                     `0 0 10px ${theme.levelGlow}, 0 0 20px ${theme.levelGlow}, 0 0 30px ${theme.levelGlow}`;
 
+                // Generate and parse the level data
                 const levelData = this.levelManager.generateLevel(this.levelManager.currentLevel, 2);
                 this.parseLevel(levelData);
+                
+                // Position player at the beginning of the level
+                // Default to left side if no start marker is found
+                if (!this.startPosition) {
+                    // Position at the far left of the level 
+                    // (level starts around -40 based on parseLevel xPos initialization)
+                    this.player.position.set(-39, this.groundY + 1.0 + this.playerSize/2, 0);
+                } else {
+                    // Use the start position from the level 
+                    this.player.position.set(this.startPosition.x, this.startPosition.y + this.playerSize/2, 0);
+                }
+                
+                // Reset velocities and ensure player is on ground
+                this.playerVelocity.x = 5;
+                this.playerVelocity.y = 0;
+                this.isJumping = false;
+                this.onGround = true;
+                
+                // Log completion
                 logDebug("Level created");
             }
 
@@ -605,6 +636,18 @@
 
                 // Skip B blocks in bottom row as they'll be part of the main floor
                 if (isBottomRow && type === 'B') return;
+
+                // Helper function to properly dispose materials and geometries
+                const disposeMesh = (mesh) => {
+                    if (mesh.geometry) mesh.geometry.dispose();
+                    if (mesh.material) {
+                        if (Array.isArray(mesh.material)) {
+                            mesh.material.forEach(mat => mat.dispose());
+                        } else {
+                            mesh.material.dispose();
+                        }
+                    }
+                };
 
                 switch (type) {
                     case 'B':
@@ -868,22 +911,25 @@
                 this.gameOverUI.style.display = 'none';
                 this.isRunning = true;
                 this.isPaused = false;
-
+                
+                // Reset death counter
+                this.levelDeathCount = 0;
+                
                 // Reset player velocities
                 this.playerVelocity.x = 5;
                 this.playerVelocity.y = 0;
                 this.isJumping = false;
-
+                
                 // Create level first to ensure platforms are in place
                 this.createLevel();
-
+                
                 // Position player on top of floor AFTER level creation
                 // (floor top is at groundY + 1.0)
-                this.player.position.set(-5, this.groundY + 1.0 + this.playerSize / 2, 0);
-
+                this.player.position.set(-5, this.groundY + 1.0 + this.playerSize/2, 0);
+                
                 // Force ground state for immediate collision recognition
                 this.onGround = true;
-
+                
                 // Update UI elements
                 this.updateScoreDisplay();
                 this.updateLevelDisplay();
@@ -937,7 +983,8 @@
 
                 // Check if player has fallen off the platforms entirely
                 if (this.player.position.y < absoluteBottom) {
-                    this.gameOver();
+                    logDebug("Player fell off platforms - resetting to level start");
+                    this.resetPlayerInLevel();
                     return;
                 }
 
@@ -1069,6 +1116,9 @@
             }
 
             checkSpikeCollisions() {
+                // Skip collision check if player is invincible
+                if (this.isInvincible) return;
+                
                 // Check spike collisions first.
                 for (let i = 0; i < this.obstacles.length; i++) {
                     const obstacle = this.obstacles[i];
@@ -1113,9 +1163,8 @@
                             const collisionSlope = spikeSize / 2; // Half width at the spike's height
 
                             if (relativeX < (spikeSize / 2) * (1 - relativeY / spikeSize) + 0.2) {
-                                logDebug("SPIKE COLLISION DETECTED! GAME OVER!");
-                                this.createDeathEffect(this.player.position.x, this.player.position.y);
-                                this.gameOver();
+                                logDebug("SPIKE COLLISION DETECTED! Resetting player...");
+                                this.resetPlayerInLevel();
                                 return;
                             }
                         } else {
@@ -1127,9 +1176,8 @@
 
                             // Increase the collision area by reducing the slope factor and adding a buffer
                             if (relativeX < (spikeSize / 2) * (1 - relativeY / spikeSize) + 0.3) {
-                                logDebug("DOWNWARD SPIKE COLLISION DETECTED! GAME OVER!");
-                                this.createDeathEffect(this.player.position.x, this.player.position.y);
-                                this.gameOver();
+                                logDebug("DOWNWARD SPIKE COLLISION DETECTED! Resetting player...");
+                                this.resetPlayerInLevel();
                                 return;
                             }
                         }
@@ -1241,10 +1289,91 @@
             }
 
             gameOver() {
-                logDebug("Game over");
-                this.isRunning = false;
-                this.finalScore.textContent = `SCORE: ${Math.floor(this.score)}`;
-                this.gameOverUI.style.display = 'block';
+                // Instead of ending the game, reset the player in the current level
+                this.resetPlayerInLevel();
+            }
+            
+            resetPlayerInLevel() {
+                logDebug("Player died - resetting to level start");
+                
+                // Track death count
+                if (!this.levelDeathCount) this.levelDeathCount = 0;
+                this.levelDeathCount++;
+                
+                // After 5 deaths on the same level, trigger real game over
+                if (this.levelDeathCount >= 5) {
+                    logDebug(`Too many deaths (${this.levelDeathCount}) - Game Over`);
+                    this.createDeathEffect(this.player.position.x, this.player.position.y);
+                    this.realGameOver();
+                    return;
+                }
+                
+                // Clean up visual effects
+                this.cleanupVisualEffects();
+                
+                // Create a death effect at the player's current position
+                const playerX = this.player.position.x;
+                const playerY = this.player.position.y;
+                this.createDeathEffect(playerX, playerY);
+                
+                // Reset player velocity
+                this.playerVelocity.x = 5;
+                this.playerVelocity.y = 0;
+                this.isJumping = false;
+                
+                // Position player at the beginning of the level
+                if (!this.startPosition) {
+                    // Position at the far left of the level
+                    this.player.position.set(-39, this.groundY + 1.0 + this.playerSize/2, 0);
+                } else {
+                    // Use the start position from the level
+                    this.player.position.set(this.startPosition.x, this.startPosition.y + this.playerSize/2, 0);
+                }
+                
+                // Ensure player is on ground
+                this.onGround = true;
+                
+                // Show temporary invincibility effect
+                this.showInvincibilityEffect();
+            }
+            
+            showInvincibilityEffect() {
+                // Make player temporarily invincible with a visual effect
+                this.isInvincible = true;
+                
+                // Flash player to indicate invincibility
+                const flashInterval = setInterval(() => {
+                    if (!this.isRunning) {
+                        clearInterval(flashInterval);
+                        return;
+                    }
+                    
+                    // Toggle visibility of player meshes
+                    this.player.children.forEach(child => {
+                        if (child.isMesh) {
+                            if (child.material.opacity > 0.5) {
+                                child.material.opacity = 0.3;
+                            } else {
+                                child.material.opacity = 0.9;
+                            }
+                        }
+                    });
+                }, 100);
+                
+                // End invincibility after 1.5 seconds
+                setTimeout(() => {
+                    if (!this.isRunning) return;
+                    
+                    clearInterval(flashInterval);
+                    this.isInvincible = false;
+                    
+                    // Reset player opacity
+                    this.player.children.forEach(child => {
+                        if (child.isMesh) {
+                            child.material.opacity = 0.9;
+                        }
+                    });
+                }, 1500);
             }
 
             createPortal(x, y) {
@@ -1477,22 +1606,66 @@
                         playerBottom < portalTop && playerTop > portalBottom) ||
                     distanceToPortal < proximityThreshold) {
                     logDebug("Level complete - advancing to next level");
-                    if (this.jumpPath) {
-                        this.scene.remove(this.jumpPath);
-                        this.jumpPath = null;
-                        this.jumpHistoryPoints = [];
-                    }
-                    if (this.jumpParticles && this.jumpParticles.length > 0) {
-                        this.jumpParticles.forEach(particle => {
-                            this.scene.remove(particle);
-                        });
-                        this.jumpParticles = [];
-                    }
+                    
+                    // Clean up all visual effects before level change
+                    this.cleanupVisualEffects();
+                    
                     this.isJumping = false;
                     this.levelManager.nextLevel();
                     this.updateLevelDisplay();
+                    
+                    // Reset death counter for the new level
+                    this.levelDeathCount = 0;
+                    
+                    // Create the new level - this will position the player correctly
                     this.createLevel();
+                    
+                    // Reset velocities to ensure proper player movement at level start
+                    this.playerVelocity.x = 5;
+                    this.playerVelocity.y = 0;
+                    this.onGround = true;
                 }
+            }
+            
+            cleanupVisualEffects() {
+                // Clean up jump particles
+                if (this.jumpParticles && this.jumpParticles.length > 0) {
+                    this.jumpParticles.forEach(particle => {
+                        this.scene.remove(particle);
+                    });
+                    this.jumpParticles = [];
+                }
+                
+                // Clean up jump path
+                if (this.jumpPath) {
+                    this.scene.remove(this.jumpPath);
+                    this.jumpPath = null;
+                    this.jumpHistoryPoints = [];
+                }
+                
+                // Remove any other visual artifacts
+                const particlesToRemove = [];
+                this.scene.traverse(object => {
+                    // Look for any stray particle effects
+                    if (object.isMesh && object.material && 
+                        (object.material.blending === THREE.AdditiveBlending || 
+                         object.material.transparent)) {
+                        // Check if it's not part of main game objects
+                        const isMainObject = this.platforms.includes(object) || 
+                                           this.obstacles.includes(object) ||
+                                           this.collectibles.includes(object) ||
+                                           (this.portal && this.portal.children.includes(object));
+                                           
+                        if (!isMainObject && !object.parent.userData?.type) {
+                            particlesToRemove.push(object);
+                        }
+                    }
+                });
+                
+                // Remove identified particles
+                particlesToRemove.forEach(particle => {
+                    this.scene.remove(particle);
+                });
             }
 
             createCollectible(x, y) {
@@ -1562,32 +1735,141 @@
             }
 
             clearLevel() {
-                if (this.platforms) this.platforms.forEach(platform => this.scene.remove(platform));
-                if (this.obstacles) this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
-                if (this.collectibles) this.collectibles.forEach(coin => this.scene.remove(coin));
-                if (this.portal) {
-                    this.scene.remove(this.portal);
-                    this.portal = null;
+                // Clean up visual effects first
+                this.cleanupVisualEffects();
+                
+                // Helper function to properly dispose of materials and geometries
+                const disposeMesh = (object) => {
+                    if (!object) return;
+                    
+                    // Dispose of children first
+                    if (object.children && object.children.length > 0) {
+                        // Create a copy of the children array to avoid issues while removing
+                        const children = [...object.children];
+                        children.forEach(child => {
+                            disposeMesh(child);
+                        });
+                    }
+                    
+                    // Dispose geometry
+                    if (object.geometry) {
+                        object.geometry.dispose();
+                    }
+                    
+                    // Dispose material(s)
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(material => {
+                                if (material.map) material.map.dispose();
+                                material.dispose();
+                            });
+                        } else {
+                            if (object.material.map) object.material.map.dispose();
+                            object.material.dispose();
+                        }
+                    }
+                    
+                    // Remove from parent
+                    if (object.parent) {
+                        object.parent.remove(object);
+                    }
+                };
+                
+                // Clean up game objects
+                if (this.platforms) {
+                    this.platforms.forEach(platform => {
+                        if (platform && platform.parent) {
+                            disposeMesh(platform);
+                        }
+                    });
+                    this.platforms = [];
                 }
+                
+                if (this.obstacles) {
+                    this.obstacles.forEach(obstacle => {
+                        if (obstacle && obstacle.parent) {
+                            disposeMesh(obstacle);
+                        }
+                    });
+                    this.obstacles = [];
+                }
+                
+                if (this.collectibles) {
+                    this.collectibles.forEach(coin => {
+                        if (coin && coin.parent) {
+                            disposeMesh(coin);
+                        }
+                    });
+                    this.collectibles = [];
+                }
+                
+                if (this.portal) {
+                    disposeMesh(this.portal);
+                    this.portal = null;
+                    this.portalParticles = [];
+                }
+                
+                // Clear floor tile positions
+                this.floorTilePositions = [];
+                
                 this.clearGrids();
                 this.updateUITheme();
                 this.updatePlayerTheme();
+                
+                // Final scene cleanup - remove any stray objects
+                const objectsToRemove = [];
+                this.scene.traverse(object => {
+                    // Skip the player and essential scene objects
+                    if (object === this.scene || 
+                        object === this.player || 
+                        (this.player && this.player.children.includes(object)) ||
+                        object.isGridHelper || 
+                        object.isLight) {
+                        return;
+                    }
+                    
+                    // Check for untracked meshes with visual effects
+                    if (object.isMesh || object.isLine || object.isPoints) {
+                        // Only objects directly in the scene are considered stray
+                        // (child objects will be handled by their parents)
+                        if (object.parent === this.scene) {
+                            objectsToRemove.push(object);
+                        }
+                    }
+                });
+                
+                objectsToRemove.forEach(object => {
+                    disposeMesh(object);
+                });
             }
 
             clearGrids() {
                 const grids = this.scene.children.filter(child => child instanceof THREE.GridHelper);
                 grids.forEach(grid => this.scene.remove(grid));
+                
+                // Remove existing grid planes
+                const gridPlanes = this.scene.children.filter(child => 
+                    child.isGridPlane || 
+                    (child.isMesh && child.geometry && child.geometry.type === 'PlaneGeometry')
+                );
+                gridPlanes.forEach(plane => this.scene.remove(plane));
+                
                 const theme = this.getTheme();
                 const gridSize = 1000;
                 const gridDivisions = 200;
                 const gridColor = theme.grid;
+                
+                // Create main grid helper
                 const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, gridColor, gridColor);
                 gridHelper.position.y = this.groundY - 0.4;
                 gridHelper.material.transparent = true;
                 gridHelper.material.opacity = 0.3;
                 gridHelper.material.blending = THREE.AdditiveBlending;
                 gridHelper.rotation.x = Math.PI / 2;
+                gridHelper.isGridHelper = true;
                 this.scene.add(gridHelper);
+                
+                // Create secondary grid helper (finer grid)
                 const secondaryGridSize = 500;
                 const secondaryGridDivisions = 50;
                 const secondaryGridHelper = new THREE.GridHelper(secondaryGridSize, secondaryGridDivisions, gridColor, gridColor);
@@ -1596,7 +1878,21 @@
                 secondaryGridHelper.material.opacity = 0.4;
                 secondaryGridHelper.material.blending = THREE.AdditiveBlending;
                 secondaryGridHelper.rotation.x = Math.PI / 2;
+                secondaryGridHelper.isGridHelper = true;
                 this.scene.add(secondaryGridHelper);
+                
+                // Create the background grid plane
+                const gridPlaneGeometry = new THREE.PlaneGeometry(gridSize, gridSize);
+                const gridPlaneMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x0A0A44,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const gridPlane = new THREE.Mesh(gridPlaneGeometry, gridPlaneMaterial);
+                gridPlane.position.y = this.groundY - 0.45;
+                gridPlane.rotation.x = -Math.PI / 2;
+                gridPlane.isGridPlane = true;
+                this.scene.add(gridPlane);
             }
 
             createDeathEffect(x, y) {
@@ -1643,6 +1939,14 @@
                     }
                 };
                 fadeAnimation();
+            }
+
+            // Real game over function when player wants to end game
+            realGameOver() {
+                logDebug("Game over");
+                this.isRunning = false;
+                this.finalScore.textContent = `SCORE: ${Math.floor(this.score)}`;
+                this.gameOverUI.style.display = 'block';
             }
         }
 
