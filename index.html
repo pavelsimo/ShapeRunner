@@ -175,7 +175,6 @@
               "B   B",
               "BBBBB"
             ],
-            // ... additional titles, jump pads, specials, gaps, challenges, etc.
             "jump1": [
               "     ",
               "  C  ",
@@ -247,8 +246,47 @@
               "     ",
               "  B  ",
               "BBBBB"
+            ],
+            "spike1": [
+              "     ",
+              "     ",
+              "     ",
+              "  C  ",
+              " BWB ",
+              "BBBBB"
+            ],
+            "spike2": [
+              "     ",
+              "     ",
+              " C C ",
+              "     ",
+              "BWWWB",
+              "BBBBB"
+            ],
+            "spike3": [
+              "     ",
+              "  C  ",
+              "     ",
+              "B   B",
+              " WWW ",
+              "BBBBB"
+            ],
+            "spike4": [
+              "     ",
+              "     ",
+              "C   C",
+              "  B  ",
+              " W W ",
+              "BBBBB"
+            ],
+            "spike5": [
+              "     ",
+              "  P  ",
+              "     ",
+              "B B B",
+              " W W ",
+              "BBBBB"
             ]
-            // ... further sections omitted for brevity.
           };
         }
 
@@ -268,8 +306,9 @@
         generateLevel(levelNumber, difficulty = 1) {
           try {
             this.currentLevel = levelNumber;
-            logDebug(`Generating level ${levelNumber} with difficulty ${difficulty}`);
-
+            // Only log once per level generation
+            logDebug(`Generating level ${levelNumber}`);
+            
             const levelDisplay = document.getElementById('level-display');
             if (levelDisplay) {
               levelDisplay.textContent = `LEVEL ${levelNumber}`;
@@ -308,6 +347,26 @@
                 const randomJump = jumpSections[Math.floor(Math.random() * jumpSections.length)];
                 const replaceIndex = Math.floor(Math.random() * selectedSections.length);
                 selectedSections[replaceIndex] = this.levelTitles[randomJump];
+              }
+            }
+
+            // Ensure spikes appear in all levels for challenge
+            let hasSpike = selectedSections.some(section => section.join('').includes('W'));
+            if (!hasSpike) {
+              const spikeSections = ['spike1', 'spike2', 'spike3', 'spike4', 'spike5'];
+              const randomSpike = spikeSections[Math.floor(Math.random() * spikeSections.length)];
+              const replaceIndex = Math.max(2, Math.floor(Math.random() * selectedSections.length));
+              selectedSections[replaceIndex] = this.levelTitles[randomSpike];
+            }
+            
+            // Add more spikes in higher levels
+            if (levelNumber >= 2) {
+              const spikeSections = ['spike1', 'spike2', 'spike3', 'spike4', 'spike5'];
+              const additionalSpikes = Math.min(Math.floor(levelNumber / 2), 3);
+              for (let i = 0; i < additionalSpikes; i++) {
+                const randomSpike = spikeSections[Math.floor(Math.random() * spikeSections.length)];
+                const replaceIndex = 3 + Math.floor(Math.random() * (selectedSections.length - 5));
+                selectedSections[replaceIndex] = this.levelTitles[randomSpike];
               }
             }
 
@@ -710,7 +769,7 @@
 
           const levelData = this.levelManager.generateLevel(this.levelManager.currentLevel, 2);
           this.parseLevel(levelData);
-          logDebug("Level created!");
+          logDebug("Level created");
         }
 
         parseLevel(levelData) {
@@ -725,7 +784,6 @@
               if (char === 'B' && isBottomRow) {
                 if (!this.floorTilePositions) this.floorTilePositions = [];
                 this.floorTilePositions.push(xPos);
-                logDebug(`Floor tile at ${xPos}`);
               }
               this.createTile(char, xPos, yPos, isBottomRow);
             }
@@ -807,7 +865,6 @@
         }
 
         createSpike(x, y, direction) {
-          logDebug(`Creating spike at ${x}, ${y}, direction: ${direction}`);
           const spikeSize = 1.0;
           const halfSize = spikeSize / 2;
           const theme = this.getTheme();
@@ -829,15 +886,19 @@
           geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
           geometry.setIndex([0, 1, 2]);
           geometry.computeVertexNormals();
+          
+          // Use theme colors for spikes instead of fixed red
           const material = new THREE.MeshBasicMaterial({
-            color: 0xFF0000,
+            color: theme.obstacle,
             side: THREE.DoubleSide
           });
+          
           const spike = new THREE.Mesh(geometry, material);
           const outlineMaterial = new THREE.LineBasicMaterial({
-            color: 0xFFFFFF,
+            color: theme.obstacleEdge || 0xFFFFFF,
             linewidth: 2
           });
+          
           const outlineGeometry = new THREE.EdgesGeometry(geometry);
           const outline = new THREE.LineSegments(outlineGeometry, outlineMaterial);
           spike.add(outline);
@@ -889,7 +950,6 @@
           const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
           groundGlow.position.y = 0.3;
           this.ground.add(groundGlow);
-          logDebug(`Created floor from ${positions.length} tiles, width: ${width}`);
         }
 
         handleKeyDown(event) {
@@ -962,7 +1022,6 @@
           this.playerVelocity.y = Math.max(this.playerVelocity.y, -30);
           if (this.playerVelocity.x < 5) {
             this.playerVelocity.x = 5;
-            logDebug("Restoring forward velocity");
           }
           this.player.position.x += this.playerVelocity.x * deltaTime;
           this.player.position.y += this.playerVelocity.y * deltaTime;
@@ -1028,13 +1087,11 @@
         }
 
         checkCollisions() {
-          logDebug(`Player position: ${this.player.position.x.toFixed(2)}, ${this.player.position.y.toFixed(2)}`);
           // Check spike collisions first.
           for (let i = 0; i < this.obstacles.length; i++) {
             const obstacle = this.obstacles[i];
             if (!obstacle || !obstacle.userData) continue;
             if (obstacle.userData.type !== 'spike') continue;
-            logDebug(`Checking spike at ${obstacle.position.x.toFixed(2)}, ${obstacle.position.y.toFixed(2)}`);
             const playerLeft = this.player.position.x - this.playerSize/2;
             const playerRight = this.player.position.x + this.playerSize/2;
             const playerBottom = this.player.position.y - this.playerSize/2;
@@ -1455,9 +1512,7 @@
           if ((playerRight > portalLeft && playerLeft < portalRight &&
                playerBottom < portalTop && playerTop > portalBottom) || 
               distanceToPortal < proximityThreshold) {
-            logDebug(distanceToPortal < proximityThreshold
-              ? "Portal proximity detected - teleporting!"
-              : "Player entered portal - level complete!");
+            logDebug("Level complete - advancing to next level");
             if (this.jumpPath) {
               this.scene.remove(this.jumpPath);
               this.jumpPath = null;
