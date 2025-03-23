@@ -88,24 +88,24 @@
               "     ",
               "     ",
               "     ",
-              "     ",
               "   E ",
+              "     ",
               "BBBBB"
             ],
             "tile1": [
               "     ",
-              "  C  ",
               "     ",
-              "  B  ",
-              " W   ",
+              "  C  ",
+              " BBB ",
+              " VVV ",
               "BBBBB"
             ],
             "tile2": [
-              " V   ",
-              "     ",
-              "C   C",
+              " WWW ",
               "BBBBB",
-              "VVVVV",
+              "     ",
+              "  C  ",
+              "     ",
               "BBBBB"
             ]
           };
@@ -394,7 +394,7 @@
           const theme = this.getTheme();
           this.playerSize = 1.0;
           this.player = new THREE.Group();
-          this.player.position.set(-5, this.groundY + this.playerSize / 2 + 0.5, 0);
+          this.player.position.set(-5, this.groundY + 1.0, 0);
           this.scene.add(this.player);
 
           const mainGeometry = new THREE.BoxGeometry(this.playerSize, this.playerSize, this.playerSize * 0.5);
@@ -550,12 +550,15 @@
 
         parseLevel(levelData) {
           const rows = levelData.split("\n");
+          // Use tileSize of 1 for tighter grid
+          const tileSpacing = 1;
           let xPos = -40;
           for (let col = 0; col < rows[0].length; col++) {
             for (let row = 0; row < rows.length; row++) {
               const invertedRow = rows.length - 1 - row;
               const char = rows[invertedRow][col];
-              const yPos = this.groundY + 1.0 + row * this.tileSize;
+              // Adjust yPos to ensure tiles align precisely
+              const yPos = this.groundY + row * tileSpacing;
               const isBottomRow = (row === 0);
               if (char === 'B' && isBottomRow) {
                 if (!this.floorTilePositions) this.floorTilePositions = [];
@@ -563,7 +566,7 @@
               }
               this.createTile(char, xPos, yPos, isBottomRow);
             }
-            xPos += this.tileSize;
+            xPos += tileSpacing;
           }
           this.createFloor();
         }
@@ -576,15 +579,16 @@
           switch (type) {
             case 'B':
               if (y - platformHeight/2 <= this.groundY + 0.5) return;
-              const platformGeometry = new THREE.BoxGeometry(2, 1, 1);
+              const platformGeometry = new THREE.BoxGeometry(1, 1, 1);
               const platformMaterial = new THREE.MeshBasicMaterial({ 
                 color: theme.platform, 
                 transparent: true,
                 opacity: 0.8
               });
               const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-              platform.position.set(x, y, 0);
-              platform.userData = { type: 'platform', width: 2, height: 1 };
+              // Position platform in center of grid cell
+              platform.position.set(x, y + platformHeight/2, 0);
+              platform.userData = { type: 'platform', width: 1, height: 1 };
               this.scene.add(platform);
               this.platforms.push(platform);
               const edges = new THREE.EdgesGeometry(platformGeometry);
@@ -593,11 +597,11 @@
               platform.add(wireframe);
               break;
             case 'W':
-              // Upward spike - should be on platforms or ground
-              this.createSpike(x, y, 'up');
+              // Upward spike - adjusted in createSpike method
+              this.createSpike(x, y + 0.5, 'up');
               break;
             case 'V':
-              // Downward spike - should be attached to ceilings
+              // Downward spike - adjusted in createSpike method
               this.createSpike(x, y, 'down');
               break;
             case 'S':
@@ -607,28 +611,28 @@
               }
               break;
             case 'E':
-              this.createPortal(x, y + 1);
+              this.createPortal(x, y + 0.5);
               break;
             case 'C':
-              this.createCollectible(x, y);
+              this.createCollectible(x, y + 0.5);
               break;
             case 'J':
-              const jumpPadGeometry = new THREE.BoxGeometry(2, 0.5, 1);
+              const jumpPadGeometry = new THREE.BoxGeometry(1, 0.5, 1);
               const jumpPadMaterial = new THREE.MeshBasicMaterial({ 
                 color: 0xFFDD00,
                 transparent: true,
                 opacity: 0.8
               });
               const jumpPad = new THREE.Mesh(jumpPadGeometry, jumpPadMaterial);
-              jumpPad.position.set(x, y, 0);
-              jumpPad.userData = { type: 'jumpPad', width: 2, height: 0.5 };
+              jumpPad.position.set(x, y + 0.25, 0);
+              jumpPad.userData = { type: 'jumpPad', width: 1, height: 0.5 };
               this.scene.add(jumpPad);
               this.platforms.push(jumpPad);
               const jumpPadEdges = new THREE.EdgesGeometry(jumpPadGeometry);
               const jumpPadLineMaterial = new THREE.LineBasicMaterial({ color: 0xFFFF00, linewidth: 2 });
               const jumpPadWireframe = new THREE.LineSegments(jumpPadEdges, jumpPadLineMaterial);
               jumpPad.add(jumpPadWireframe);
-              const glowGeometry = new THREE.BoxGeometry(2.2, 0.7, 1.1);
+              const glowGeometry = new THREE.BoxGeometry(1.2, 0.7, 1.1);
               const glowMaterial = new THREE.MeshBasicMaterial({
                 color: 0xFFFF00,
                 transparent: true,
@@ -700,7 +704,15 @@
           glow.scale.set(1.2, 1.2, 1.2);
           spike.add(glow);
           
-          spike.position.set(x, y, 0);
+          // Adjust y position based on direction to ensure proper alignment with grid
+          if (direction === 'up') {
+            // For upward spikes, position at the bottom of the cell
+            spike.position.set(x, y - halfSize, 0);
+          } else {
+            // For downward spikes, position at the top of the cell and move up to touch platform
+            spike.position.set(x, y + halfSize + 0.5, 0);
+          }
+          
           this.scene.add(spike);
           this.obstacles.push(spike);
           
@@ -724,7 +736,7 @@
           const positions = [...this.floorTilePositions].sort((a, b) => a - b);
           const minX = positions[0];
           const maxX = positions[positions.length - 1];
-          const width = maxX - minX + 2;
+          const width = maxX - minX + 1;
           const centerX = (maxX + minX) / 2;
           const groundGeometry = new THREE.BoxGeometry(width, 0.5, 1);
           const groundMaterial = new THREE.MeshBasicMaterial({ 
@@ -733,7 +745,7 @@
             opacity: 0.6
           });
           this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
-          this.ground.position.set(centerX, this.groundY, 0);
+          this.ground.position.set(centerX, this.groundY + 0.25, 0);
           this.scene.add(this.ground);
           this.platforms.push(this.ground);
           const groundEdges = new THREE.EdgesGeometry(groundGeometry);
@@ -908,6 +920,7 @@
               spikeTop = obstacle.position.y + spikeSize;
             } else {
               // For downward spike, the top is at the position and bottom is below
+              // Adjust for the new positioning
               spikeBottom = obstacle.position.y - spikeSize;
               spikeTop = obstacle.position.y;
             }
@@ -1271,8 +1284,8 @@
           }
           this.portal.userData = {
             type: 'portal',
-            width: 2.4,
-            height: 2.8
+            width: 1.4,
+            height: 1.8
           };
           this.scene.add(this.portal);
         }
@@ -1377,7 +1390,7 @@
           });
           const collectible = new THREE.Mesh(collectibleGeometry, collectibleMaterial);
           collectible.position.set(x, y, 0);
-          collectible.userData = { type: 'coin', width: 1, height: 1, collected: false };
+          collectible.userData = { type: 'coin', width: 0.5, height: 0.5, collected: false };
           this.scene.add(collectible);
           this.collectibles.push(collectible);
           const collectibleGlowGeometry = new THREE.BoxGeometry(0.7, 0.7, 0.7);
