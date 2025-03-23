@@ -69,13 +69,14 @@
         function initGame() {
             logDebug("Initializing ShapeRunner...");
             
-        // LevelManager class handles level generation via simple ASCII section layouts.
+            // LevelManager class handles level generation via simple ASCII section layouts.
             class LevelManager {
                 constructor(game) {
                     this.game = game;
                     this.currentLevel = 1;
                     this.maxLevels = 5;
-                // Define level sections (each section is 18 rows tall - increased from 6)
+
+                    // Define level sections (each section is 18 rows tall - increased from 6)
                     this.levelTitles = {
                     "start": [
                         "     ",
@@ -504,9 +505,86 @@
                 this.obstacles = [];
                 this.collectibles = [];
                 this.floorTilePositions = [];
+                
+                // Initialize sound effects
+                this.initSounds();
 
                 // Start initialization
                     this.init();
+                }
+                
+                // Initialize sound effects
+                initSounds() {
+                    try {
+                        // Create audio elements using local files from assets folder
+                        this.sounds = {
+                            coin: new Audio("assets/coin.wav"),
+                            jump: new Audio("assets/jump.wav"),
+                            death: new Audio("assets/death.wav")
+                        };
+                        
+                        // Preload all sounds
+                        Object.values(this.sounds).forEach(audio => {
+                            audio.load();
+                            audio.volume = 0.5;
+                        });
+                        
+                        // Initialize background music
+                        this.backgroundMusic = new Audio("assets/background.mp3");
+                        this.backgroundMusic.loop = true;
+                        this.backgroundMusic.volume = 0.3; // Lower volume for background music
+                        this.backgroundMusic.load();
+                        
+                        logDebug("Sound effects initialized from assets folder");
+                    } catch (error) {
+                        logDebug("Error initializing sound effects: " + error.message);
+                    }
+                }
+                
+                // Play a sound with the given name
+                playSound(name, volume = 0.5) {
+                    try {
+                        if (!this.sounds[name]) return;
+                        
+                        // Clone the audio to allow overlapping sounds
+                        const sound = this.sounds[name].cloneNode();
+                        sound.volume = volume;
+                        
+                        // Play the sound
+                        sound.play().catch(error => {
+                            // Handle autoplay restrictions
+                            logDebug(`Error playing sound ${name}: ${error.message}`);
+                        });
+                    } catch (error) {
+                        logDebug(`Error playing sound ${name}: ${error.message}`);
+                    }
+                }
+                
+                // Play background music
+                playBackgroundMusic() {
+                    if (!this.backgroundMusic) return;
+                    
+                    this.backgroundMusic.play().catch(error => {
+                        // Handle autoplay restrictions - try again after user interaction
+                        logDebug(`Error playing background music: ${error.message}`);
+                        
+                        // Add one-time click listener to start music after user interaction
+                        const startAudio = () => {
+                            this.backgroundMusic.play();
+                            document.removeEventListener('click', startAudio);
+                            document.removeEventListener('keydown', startAudio);
+                        };
+                        
+                        document.addEventListener('click', startAudio);
+                        document.addEventListener('keydown', startAudio);
+                    });
+                }
+                
+                // Pause background music
+                pauseBackgroundMusic() {
+                    if (this.backgroundMusic) {
+                        this.backgroundMusic.pause();
+                    }
                 }
 
             // Helper to get the current theme based on level.
@@ -547,6 +625,9 @@
                         this.isRunning = true;
                         this.lastTime = performance.now();
                         this.animate();
+                        
+                        // Start playing background music
+                        this.playBackgroundMusic();
                         
                         logDebug("Game initialized successfully");
                     } catch (error) {
@@ -1067,6 +1148,14 @@
                 
                 togglePause() {
                     this.isPaused = !this.isPaused;
+                    
+                    // Pause or resume background music based on game state
+                    if (this.isPaused) {
+                        this.pauseBackgroundMusic();
+                    } else {
+                        this.playBackgroundMusic();
+                    }
+                    
                     logDebug("Game " + (this.isPaused ? "paused" : "resumed"));
                 }
                 
@@ -1099,6 +1188,9 @@
                     this.updateScoreDisplay();
                     this.updateLevelDisplay();
                 this.updateUITheme();
+                
+                // Restart background music
+                this.playBackgroundMusic();
                 }
                 
                 animate() {
@@ -1405,6 +1497,9 @@
                             const coinValue = coin.userData.value || 100;
                             this.score += coinValue;
                             this.updateScoreDisplay();
+                            
+                            // Play coin collection sound
+                            this.playSound('coin');
                         }
                     }
                 }
@@ -2141,6 +2236,10 @@
                     const theme = this.getTheme();
                     const particleCount = 15;
                     const particles = [];
+                    
+                    // Play death sound
+                    this.playSound('death');
+                    
                     for (let i = 0; i < particleCount; i++) {
                         const size = 0.1 + Math.random() * 0.15;
                         const particleGeometry = new THREE.BoxGeometry(size, size, size);
@@ -2189,6 +2288,9 @@
                 this.isRunning = false;
                 this.finalScore.textContent = `SCORE: ${Math.floor(this.score)}`;
                 this.gameOverUI.style.display = 'block';
+                
+                // Pause background music on game over
+                this.pauseBackgroundMusic();
             }
 
             // Add this new method to handle jumping
@@ -2206,6 +2308,9 @@
                     this.onGround = false;
                     this.onPlatform = false;
                     this.createJumpParticles();
+                    
+                    // Play jump sound
+                    this.playSound('jump');
                     
                     if (this.showJumpPath) {
                         this.jumpHistoryPoints = [];
