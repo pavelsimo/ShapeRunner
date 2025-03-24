@@ -410,6 +410,8 @@
                     window.addEventListener('resize', this.handleResize.bind(this));
                 // Add mouse click event listener for jumping
                 window.addEventListener('click', () => this.jump());
+                // Add touch event listener for mobile devices
+                window.addEventListener('touchstart', () => this.jump());
                     
                     // Game properties
                     this.isRunning = false;
@@ -2360,7 +2362,7 @@
             }
         });
 
-        // Display control instructions.
+        
         logDebug("CONTROLS: Press SPACE or UP ARROW to jump, or CLICK the mouse");
             logDebug("Press RIGHT ARROW for temporary speed boost");
             logDebug("Game automatically moves forward");
