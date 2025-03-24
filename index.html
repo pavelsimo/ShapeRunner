@@ -1542,15 +1542,19 @@
             
             createExitVibeVersePortal(x, y) {
                 this.createTeleportPortal(x, y, 'VIBEVERSE PORTAL', 0x00FF00, () => {
-                    logDebug("Player Exited VibeVerse!");
-                    exitPortalRedirection();
+                    logDebug("Player Exited VibeVerse!");                    
+                    this.animatePlayerEnteringPortal(x, y, () => {
+                        exitPortalRedirection();
+                    });                  
                 });
             }
 
             createEnterVibeVersePortal(x, y) {
-                this.createTeleportPortal(x, y, 'VIBEVERSE PORTAL', 0x00FF00, () => {
-                    logDebug("Player Entered VibeVerse!");
-                    enterPortalRedirection();
+                this.createTeleportPortal(x, y, 'METAVERSE PORTAL', 0x800080, () => {
+                    logDebug("Player Entered VibeVerse!");                    
+                    this.animatePlayerEnteringPortal(x, y, () => {
+                        enterPortalRedirection();
+                    });                 
                 });
             }
             
@@ -2639,6 +2643,81 @@
                     }
                 }
             }
+
+            animatePlayerEnteringPortal(portalX, portalY, completionCallback) {
+                // Disable normal player movement during the animation
+                this.isRunning = false;
+                const originalVelocity = {...this.playerVelocity};
+                this.playerVelocity = {x: 0, y: 0};
+                
+                // Create a full-screen overlay for the fade effect
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0';
+                overlay.style.left = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.backgroundColor = 'rgba(0, 0, 51, 0)'; // Start transparent with dark blue background
+                overlay.style.transition = 'background-color 2s ease-in';
+                overlay.style.zIndex = '9999';
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                document.body.appendChild(overlay);
+                
+                // Create the teleporting text with neon effect similar to LEVEL 1
+                const teleportText = document.createElement('div');
+                teleportText.textContent = 'TELEPORTING';
+                teleportText.style.fontFamily = 'monospace, sans-serif';
+                teleportText.style.fontSize = '48px';
+                teleportText.style.fontWeight = 'bold';
+                teleportText.style.color = '#00FFFF'; // Cyan neon color
+                teleportText.style.textShadow = '0 0 10px #00FFFF, 0 0 20px #00FFFF, 0 0 30px #00FFFF';
+                teleportText.style.opacity = '0';
+                teleportText.style.transition = 'opacity 1.5s ease-in';
+                teleportText.style.letterSpacing = '4px';
+                teleportText.style.textTransform = 'uppercase';
+                teleportText.style.border = '3px solid #00FFFF';
+                teleportText.style.borderRadius = '10px';
+                teleportText.style.padding = '15px 30px';
+                teleportText.style.boxShadow = '0 0 10px #00FFFF, 0 0 20px #00FFFF';
+                overlay.appendChild(teleportText);
+                
+                // Start the animation sequence
+                setTimeout(() => {
+                    // Fade in the dark blue overlay
+                    overlay.style.backgroundColor = 'rgba(0, 0, 51, 0.9)'; // Dark blue background like the image
+                    
+                    // Show the teleporting text after a short delay
+                    setTimeout(() => {
+                        teleportText.style.opacity = '1';
+                        
+                        // Create a pulsing effect for the text
+                        let pulseIntensity = 1;
+                        const pulseInterval = setInterval(() => {
+                            pulseIntensity = pulseIntensity === 1 ? 1.5 : 1;
+                            teleportText.style.textShadow = `0 0 ${10 * pulseIntensity}px #00FFFF, 0 0 ${20 * pulseIntensity}px #00FFFF, 0 0 ${30 * pulseIntensity}px #00FFFF`;
+                            teleportText.style.boxShadow = `0 0 ${10 * pulseIntensity}px #00FFFF, 0 0 ${20 * pulseIntensity}px #00FFFF`;
+                        }, 500);
+                        
+                        // Execute the callback and clean up after animation completes
+                        setTimeout(() => {
+                            clearInterval(pulseInterval);
+                            
+                            // Execute teleport callback
+                            if (typeof completionCallback === 'function') {
+                                completionCallback();
+                            }
+                            
+                            // Reset player properties
+                            this.player.visible = true;
+                            this.player.rotation.z = 0;
+                            this.playerVelocity = originalVelocity;
+                            this.isRunning = true;
+                        }, 2000);
+                    }, 500);
+                }, 100);
+            }
         }
 
         // Initialize game.
@@ -2666,3 +2745,4 @@
 </script>
 </body>
 </html> 
+d wa
