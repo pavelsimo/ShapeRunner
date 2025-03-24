@@ -74,29 +74,25 @@
      * waits 5 seconds, then reads the 'ref' parameter to build the target URL.
      */
     function startPortalRedirection() {
-        logDebug("Starting portal redirection: " + window.location.search);
-        if (new URLSearchParams(window.location.search).get('portal')) {
-            setTimeout(function () {
-                const urlParams = new URLSearchParams(window.location.search);
-                const refUrl = urlParams.get('ref');
-                if (refUrl) {
-                    let url = refUrl;
-                    // Prepend 'https://' if protocol is missing.
-                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                        url = 'https://' + url;
-                    }
-                    // Rebuild URL parameters excluding 'ref'
-                    const currentParams = new URLSearchParams(window.location.search);
-                    const newParams = new URLSearchParams();
-                    for (const [key, value] of currentParams) {
-                        if (key !== 'ref') {
-                            newParams.append(key, value);
-                        }
-                    }
-                    const paramString = newParams.toString();
-                    window.location.href = url + (paramString ? '?' + paramString : '');
+        logDebug("Starting portal redirection: " + window.location.search);        
+        const urlParams = new URLSearchParams(window.location.search);
+        const refUrl = urlParams.get('ref');
+        if (refUrl) {
+            let url = refUrl;
+            // Prepend 'https://' if protocol is missing.
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            // Rebuild URL parameters excluding 'ref'
+            const currentParams = new URLSearchParams(window.location.search);
+            const newParams = new URLSearchParams();
+            for (const [key, value] of currentParams) {
+                if (key !== 'ref') {
+                    newParams.append(key, value);
                 }
-            }, 5000);
+            }
+            const paramString = newParams.toString();
+            window.location.href = url + (paramString ? '?' + paramString : '');
         }
     }
 
@@ -263,7 +259,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "   O ",
+                        "     ",
                         "   BB",
                         "   VV",
                         "     ",
@@ -369,6 +365,126 @@
                         "     ",
                         "BBBWW"
                     ],
+                    "tile10": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  O  ",
+                        " BBB ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBWW"
+                    ],    
+                    "tile11": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  Q  ",
+                        " BBB ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBWW"
+                    ],    
+                    "tile12": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBB  ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ],   
+                    "tile13": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  BBB",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ],    
+                    "tile14": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBB  ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ],  
+                    "tile14": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "J   J",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ],                                                                                                            
                 };
             }
 
@@ -1076,7 +1192,9 @@
                         this.createSpecialCollectible(x, y);
                         break;
                     case 'Q':
-                        this.createEnterVibeVersePortal(x, y + 0.5);
+                        if (new URLSearchParams(window.location.search).get('portal')) {
+                            this.createEnterVibeVersePortal(x, y + 0.5);
+                        }
                         break;                        
                     case 'O':
                         this.createExitVibeVersePortal(x, y + 0.5);
@@ -1550,10 +1668,9 @@
             }
 
             createEnterVibeVersePortal(x, y) {
-                this.createTeleportPortal(x, y, 'METAVERSE PORTAL', 0x800080, () => {
-                    logDebug("Player Entered VibeVerse!");                    
+                this.createTeleportPortal(x, y, 'METAVERSE PORTAL', 0x800080, () => {                   
                     this.animatePlayerEnteringPortal(x, y, () => {
-                        enterPortalRedirection();
+                        startPortalRedirection();
                     });                 
                 });
             }
@@ -2643,7 +2760,7 @@
                     }
                 }
             }
-
+            
             animatePlayerEnteringPortal(portalX, portalY, completionCallback) {
                 // Disable normal player movement during the animation
                 this.isRunning = false;
