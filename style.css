@@ -203,4 +203,108 @@ canvas {
 /* Dynamic theme colors */
 :root {
     --theme-color: #00FFFF;
+}
+
+/* Media queries for responsive UI */
+@media screen and (max-width: 768px) {
+    #score-display {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    
+    #level-display {
+        font-size: 14px;
+        padding: 8px 12px;
+        top: 15px;
+    }
+    
+    #pause-btn {
+        width: 36px;
+        height: 36px;
+        top: 15px;
+        left: 15px;
+    }
+    
+    #pause-btn div {
+        height: 16px;
+        width: 4px;
+    }
+    
+    #game-over {
+        width: 80%;
+        padding: 15px 20px;
+    }
+    
+    #game-over h2 {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+    
+    #retry-btn {
+        font-size: 16px;
+        padding: 8px 16px;
+    }    
+}
+
+@media screen and (max-width: 480px) {
+    #ui {
+        top: 10px;
+        right: 10px;
+    }
+    
+    #score-display {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    #level-display {
+        font-size: 12px;
+        padding: 6px 10px;
+        top: 10px;
+    }
+    
+    #pause-btn {
+        width: 32px;
+        height: 32px;
+        top: 10px;
+        left: 10px;
+    }
+    
+    #pause-btn div {
+        height: 14px;
+        width: 3px;
+    }
+    
+    #game-over {
+        width: 85%;
+        padding: 12px 15px;
+        max-width: 300px;
+    }
+    
+    #game-over h2 {
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+    
+    #final-score {
+        font-size: 14px;
+        margin: 5px 0 15px 0;
+        padding: 5px;
+        display: block;
+    }
+    
+    #retry-btn {
+        font-size: 14px;
+        padding: 8px 15px;
+        margin-top: 5px;
+        width: 80%;
+        max-width: 200px;
+    }
+    
+    /* Further adjust the external link */
+    [href="https://jam.pieter.com"] {
+        font-size: 10px !important;
+        padding: 4px !important;
+        border-top-left-radius: 6px !important;
+    }
 } 
