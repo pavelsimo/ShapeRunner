@@ -476,15 +476,35 @@
                         "     ",
                         "     ",
                         "     ",
+                        "  C  ",
+                        "  C  ",
+                        "  J  ",
                         "     ",
                         "     ",
-                        "J   J",
+                        "     ",
+                        "     ",
+                        "BBBBB",
+                    ],
+                    "tile15": [
                         "     ",
                         "     ",
                         "     ",
                         "     ",
-                        "BBBBB"
-                    ],                                                                                                            
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "CCCCC",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"  
+                    ]                                                                                                                             
                 };
             }
 
@@ -594,8 +614,6 @@
                 this.retryBtn.addEventListener('click', () => this.restart());
                 window.addEventListener('keydown', this.handleKeyDown.bind(this));
                 window.addEventListener('resize', this.handleResize.bind(this));
-                // Add mouse click event listener for jumping
-                window.addEventListener('click', () => this.jump());
                 // Add touch event listener for mobile devices
                 window.addEventListener('touchstart', () => this.jump());
 
@@ -1386,6 +1404,9 @@
                 // Reset death counter
                 this.levelDeathCount = 0;
 
+                // Reset level manager to level 1
+                this.levelManager.currentLevel = 1;
+
                 // Reset player velocities
                 this.playerVelocity.x = this.baseVelocity; // Use baseVelocity property
                 this.playerVelocity.y = 0;
@@ -1394,9 +1415,15 @@
                 // Create level first to ensure platforms are in place
                 this.createLevel();
 
-                // Position player on top of floor AFTER level creation
-                // (floor top is at groundY + 1.0)
-                this.player.position.set(-5, this.groundY + 1.0 + this.playerSize / 2, 0);
+                // Position player at the beginning of the level
+                // Use start position from level data if available, otherwise use default position
+                if (!this.startPosition) {
+                    // Position at the far left of the level
+                    this.player.position.set(-39, this.groundY + 1.0 + this.playerSize / 2, 0);
+                } else {
+                    // Use the start position from the level
+                    this.player.position.set(this.startPosition.x, this.startPosition.y + this.playerSize / 2, 0);
+                }
 
                 // Force ground state for immediate collision recognition
                 this.onGround = true;
@@ -2854,7 +2881,7 @@
         });
 
 
-        logDebug("CONTROLS: Press SPACE or UP ARROW to jump, or CLICK the mouse");
+        logDebug("CONTROLS: Press SPACE or UP ARROW to jump");
         logDebug("Press RIGHT ARROW for temporary speed boost");
         logDebug("Game automatically moves forward");
         logDebug("Avoid spikes and collect coins!");
