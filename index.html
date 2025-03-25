@@ -564,6 +564,26 @@
                         "     ",
                         "     ",
                         "BBBBB"  
+                    ],
+                    "tile19": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ", 
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",                                                
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  *  ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"  
                     ]                                                                                                                                                 
                 };
             }
@@ -591,7 +611,7 @@
                         levelDisplay.textContent = `LEVEL ${levelNumber}`;
                     }
 
-                    const maxHeight = 18; // Updated from 6 to 18
+                    const maxHeight = 18;
                     const combinedLevel = Array.from({length: maxHeight}, () => []);
 
                     const appendTitle = (title) => {
@@ -604,9 +624,35 @@
                     appendTitle(this.levelTitles['start']);
 
                     // Calculate number of sections based on level number
-                    const baseNumSections = 30; // Increased from 10 to 30 (3x longer levels)
-                    const additionalSections = Math.min(Math.floor(levelNumber / 2), 15); // Increased max additional sections as well
+                    const baseNumSections = 30;
+                    const additionalSections = Math.min(Math.floor(levelNumber / 2), 15);
                     const numSections = baseNumSections + additionalSections;
+
+                    // Track special tile appearances
+                    const specialCounts = {
+                        magnet: 0,        // '='
+                        invisibility: 0,  // '*'
+                        enterPortal: 0,   // 'Q'
+                        exitPortal: 0     // 'O'
+                    };
+
+                    // Helper function to check if a tile contains any special items
+                    const hasSpecialItem = (tile) => {
+                        const tileContent = this.levelTitles[tile].join('');
+                        return tileContent.includes('=') || 
+                               tileContent.includes('*') || 
+                               tileContent.includes('Q') || 
+                               tileContent.includes('O');
+                    };
+
+                    // Helper function to count special items in a tile
+                    const countSpecialItems = (tile) => {
+                        const tileContent = this.levelTitles[tile].join('');
+                        if (tileContent.includes('=')) specialCounts.magnet++;
+                        if (tileContent.includes('*')) specialCounts.invisibility++;
+                        if (tileContent.includes('Q')) specialCounts.enterPortal++;
+                        if (tileContent.includes('O')) specialCounts.exitPortal++;
+                    };
 
                     // Randomly choose between available tiles for each section
                     const availableTiles = Object.keys(this.levelTitles).filter(key =>
@@ -619,31 +665,32 @@
                     const maxHistorySize = 3;
 
                     for (let i = 0; i < numSections; i++) {
-                        // If there's only one tile type available, we have to use it
-                        if (availableTiles.length === 1) {
-                            const tileType = availableTiles[0];
-                            logDebug(`Adding tile: ${tileType}`);
-                            appendTitle(this.levelTitles[tileType]);
-                            recentTiles.push(tileType);
-                            if (recentTiles.length > maxHistorySize) {
-                                recentTiles.shift();
-                            }
-                            continue;
+                        // Filter out tiles based on special item limits
+                        let validTiles = availableTiles.filter(tile => {
+                            const tileContent = this.levelTitles[tile].join('');
+                            if (specialCounts.magnet >= 1 && tileContent.includes('=')) return false;
+                            if (specialCounts.invisibility >= 1 && tileContent.includes('*')) return false;
+                            if (specialCounts.enterPortal >= 1 && tileContent.includes('Q')) return false;
+                            if (specialCounts.exitPortal >= 1 && tileContent.includes('O')) return false;
+                            return !recentTiles.includes(tile);
+                        });
+
+                        // If no valid tiles available, use any tile except special items and recent ones
+                        if (validTiles.length === 0) {
+                            validTiles = availableTiles.filter(tile => 
+                                !hasSpecialItem(tile) && tile !== recentTiles[recentTiles.length - 1]
+                            );
                         }
 
-                        // Filter out tiles that were used in the last 3 sections
-                        const validTiles = availableTiles.filter(tile => !recentTiles.includes(tile));
-
-                        // If no valid tiles (shouldn't happen with our tile count), use any tile except the last one
-                        const tilesToChooseFrom = validTiles.length > 0 ? validTiles : 
-                            availableTiles.filter(tile => tile !== recentTiles[recentTiles.length - 1]);
-
                         // Select a random tile from valid options
-                        const randomIndex = Math.floor(Math.random() * tilesToChooseFrom.length);
-                        const tileType = tilesToChooseFrom[randomIndex];
+                        const randomIndex = Math.floor(Math.random() * validTiles.length);
+                        const tileType = validTiles[randomIndex];
 
                         logDebug(`Adding tile: ${tileType}`);
                         appendTitle(this.levelTitles[tileType]);
+
+                        // Update special item counts
+                        countSpecialItems(tileType);
 
                         // Update recent tiles history
                         recentTiles.push(tileType);
@@ -656,7 +703,9 @@
                     appendTitle(this.levelTitles['end']);
 
                     const levelString = combinedLevel.map(row => row.join('')).join('\n');
-                    logDebug("Level generation complete");
+                    logDebug(`Level generation complete. Special items: Magnet=${specialCounts.magnet}, ` +
+                            `Invisibility=${specialCounts.invisibility}, Enter Portal=${specialCounts.enterPortal}, ` +
+                            `Exit Portal=${specialCounts.exitPortal}`);
                     return levelString;
                 } catch (error) {
                     logDebug("Error generating level: " + error.message);
@@ -710,6 +759,12 @@
                 this.magnetDuration = 10000; // 10 seconds
                 this.magnetRange = 10; // Range in world units
                 this.magnetAttractionSpeed = 15; // Speed at which coins move towards player
+
+                // Invisibility powerup properties
+                this.isInvisible = false;
+                this.invisibilityTimer = null;
+                this.invisibilityDuration = 10000; // 10 seconds
+                this.originalPlayerOpacity = 0.9;
 
                 // Level themes
                 this.themes = [
@@ -1364,6 +1419,81 @@
 
                         this.scene.add(magnet);
                         this.collectibles.push(magnet);
+                        break;
+                    case '*':
+                        const starGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                        const starMaterial = new THREE.MeshBasicMaterial({
+                            color: 0x00FFFF,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const star = new THREE.Mesh(starGeometry, starMaterial);
+                        star.position.set(x, y + 0.5, 0);
+                        star.userData = {
+                            type: 'invisibility',
+                            width: 0.6,
+                            height: 0.6,
+                            collected: false
+                        };
+
+                        // Add sparkle effect
+                        const sparkleGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+                        const sparkleMaterial = new THREE.MeshBasicMaterial({
+                            color: 0xFFFFFF,
+                            transparent: true,
+                            opacity: 0.3,
+                            blending: THREE.AdditiveBlending,
+                            side: THREE.BackSide
+                        });
+                        const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+                        star.add(sparkle);
+
+                        // Add star points
+                        const points = 5;
+                        const innerRadius = 0.5;
+                        const outerRadius = 0.7;
+                        const starPointsGeometry = new THREE.BufferGeometry();
+                        const positions = [];
+                        
+                        for (let i = 0; i < points * 2; i++) {
+                            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                            const angle = (i / (points * 2)) * Math.PI * 2;
+                            positions.push(
+                                Math.cos(angle) * radius,
+                                Math.sin(angle) * radius,
+                                0
+                            );
+                        }
+                        // Close the star shape
+                        positions.push(positions[0], positions[1], positions[2]);
+                        
+                        starPointsGeometry.setAttribute('position', 
+                            new THREE.Float32BufferAttribute(positions, 3));
+                        
+                        const starPointsMaterial = new THREE.LineBasicMaterial({
+                            color: 0x00FFFF,
+                            transparent: true,
+                            opacity: 0.5,
+                            blending: THREE.AdditiveBlending
+                        });
+                        
+                        const starPoints = new THREE.Line(starPointsGeometry, starPointsMaterial);
+                        star.add(starPoints);
+
+                        // Animate star rotation and sparkle
+                        const animateStar = () => {
+                            if (!star.parent) return;
+                            star.rotation.z += 0.01;
+                            starPoints.rotation.z -= 0.005;
+                            const scale = 1 + Math.sin(performance.now() * 0.003) * 0.1;
+                            sparkle.scale.set(scale, scale, scale);
+                            sparkle.material.opacity = 0.3 + Math.sin(performance.now() * 0.003) * 0.2;
+                            requestAnimationFrame(animateStar);
+                        };
+                        animateStar();
+
+                        this.scene.add(star);
+                        this.collectibles.push(star);
                         break;
                 }
             }
@@ -2160,6 +2290,10 @@
                             // Activate magnet powerup
                             this.activateMagnet();
                             // No score for magnet pickup
+                        } else if (collectible.userData.type === 'invisibility') {
+                            // Activate invisibility powerup
+                            this.activateInvisibility();
+                            // No score for invisibility pickup
                         } else {
                             // Regular coin collection
                             const coinValue = collectible.userData.value || 100;
@@ -3118,6 +3252,135 @@
                         }, 2000);
                     }, 500);
                 }, 100);
+            }
+
+            activateInvisibility() {
+                this.isInvisible = true;
+                this.isInvincible = true; // Make player invincible while invisible
+                
+                // Store original opacity values
+                const originalOpacities = new Map();
+                this.player.traverse((child) => {
+                    if (child.material && child.material.opacity !== undefined) {
+                        originalOpacities.set(child, child.material.opacity);
+                        child.material.opacity *= 0.3; // Make player semi-transparent
+                    }
+                });
+                
+                // Create ethereal effect
+                const etherealEffect = new THREE.Group();
+                etherealEffect.name = 'etherealEffect';
+                
+                // Add ghostly trail effect
+                const trailGeometry = new THREE.BoxGeometry(this.playerSize * 1.2, this.playerSize * 1.2, this.playerSize * 0.6);
+                const trailMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x00FFFF,
+                    transparent: true,
+                    opacity: 0.2,
+                    blending: THREE.AdditiveBlending
+                });
+                const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+                etherealEffect.add(trail);
+                
+                // Add pulsing glow
+                const glowAnimation = () => {
+                    if (!this.isInvisible) {
+                        this.player.remove(etherealEffect);
+                        return;
+                    }
+                    const time = performance.now() * 0.001;
+                    trail.material.opacity = 0.1 + Math.sin(time * 2) * 0.1;
+                    trail.scale.set(
+                        1 + Math.sin(time * 3) * 0.1,
+                        1 + Math.sin(time * 2) * 0.1,
+                        1
+                    );
+                    requestAnimationFrame(glowAnimation);
+                };
+                
+                // Add the effect to the player
+                this.player.add(etherealEffect);
+                glowAnimation();
+                
+                // Clear existing timer if any
+                if (this.invisibilityTimer) {
+                    clearTimeout(this.invisibilityTimer);
+                }
+                
+                // Set timer to deactivate invisibility
+                this.invisibilityTimer = setTimeout(() => {
+                    this.isInvisible = false;
+                    this.isInvincible = false;
+                    this.player.remove(etherealEffect);
+                    
+                    // Restore original opacity values
+                    this.player.traverse((child) => {
+                        if (originalOpacities.has(child)) {
+                            child.material.opacity = originalOpacities.get(child);
+                        }
+                    });
+                    
+                    // Add reappearing effect
+                    const reappearEffect = () => {
+                        const particles = [];
+                        const particleCount = 20;
+                        
+                        for (let i = 0; i < particleCount; i++) {
+                            const particle = new THREE.Mesh(
+                                new THREE.BoxGeometry(0.1, 0.1, 0.1),
+                                new THREE.MeshBasicMaterial({
+                                    color: 0x00FFFF,
+                                    transparent: true,
+                                    opacity: 0.8,
+                                    blending: THREE.AdditiveBlending
+                                })
+                            );
+                            
+                            const angle = (i / particleCount) * Math.PI * 2;
+                            const radius = 0.5;
+                            particle.position.set(
+                                Math.cos(angle) * radius,
+                                Math.sin(angle) * radius,
+                                0
+                            );
+                            
+                            particle.userData.velocity = {
+                                x: (Math.random() - 0.5) * 0.2,
+                                y: (Math.random() - 0.5) * 0.2
+                            };
+                            
+                            this.player.add(particle);
+                            particles.push(particle);
+                        }
+                        
+                        let duration = 0;
+                        const animate = () => {
+                            if (duration > 30) {
+                                particles.forEach(p => this.player.remove(p));
+                                return;
+                            }
+                            
+                            particles.forEach(particle => {
+                                particle.position.x += particle.userData.velocity.x;
+                                particle.position.y += particle.userData.velocity.y;
+                                particle.material.opacity -= 0.02;
+                            });
+                            
+                            duration++;
+                            requestAnimationFrame(animate);
+                        };
+                        animate();
+                    };
+                    reappearEffect();
+                }, this.invisibilityDuration);
+                
+                // Play activation sound
+                const invisibilitySound = new Audio();
+                invisibilitySound.src = 'assets/coin.wav'; // Reuse coin sound for now
+                invisibilitySound.volume = 0.3;
+                invisibilitySound.play().catch(error => {
+                    logDebug("Error playing invisibility sound: " + error.message);
+                });
             }
         }
 
