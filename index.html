@@ -544,6 +544,26 @@
                         "     ",
                         "     ",
                         "BBBBB"  
+                    ],
+                    "tile18": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ", 
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",                                                
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  =  ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"  
                     ]                                                                                                                                                 
                 };
             }
@@ -683,6 +703,13 @@
                 this.portal = null;
                 this.portalPosition = {x: 0, y: 0};
                 this.isInvincible = false; // Add invincibility flag
+                
+                // Magnet powerup properties
+                this.hasMagnet = false;
+                this.magnetTimer = null;
+                this.magnetDuration = 10000; // 10 seconds
+                this.magnetRange = 10; // Range in world units
+                this.magnetAttractionSpeed = 15; // Speed at which coins move towards player
 
                 // Level themes
                 this.themes = [
@@ -1277,6 +1304,66 @@
                         break;                        
                     case 'O':
                         this.createExitVibeVersePortal(x, y + 0.5);
+                        break;
+                    case '=':
+                        const magnetGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                        const magnetMaterial = new THREE.MeshBasicMaterial({
+                            color: 0xFF0000,
+                            transparent: true,
+                            opacity: 0.9
+                        });
+                        const magnet = new THREE.Mesh(magnetGeometry, magnetMaterial);
+                        magnet.position.set(x, y + 0.5, 0);
+                        magnet.userData = {
+                            type: 'magnet',
+                            width: 0.6,
+                            height: 0.6,
+                            collected: false
+                        };
+                        
+                        // Add glow effect
+                        const magnetGlowGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+                        const magnetGlowMaterial = new THREE.MeshBasicMaterial({
+                            color: 0xFF0000,
+                            transparent: true,
+                            opacity: 0.3,
+                            blending: THREE.AdditiveBlending,
+                            side: THREE.BackSide
+                        });
+                        const magnetGlow = new THREE.Mesh(magnetGlowGeometry, magnetGlowMaterial);
+                        magnet.add(magnetGlow);
+
+                        // Add pulsing animation
+                        const pulseAnimation = () => {
+                            if (!magnet.parent) return; // Stop if magnet is removed
+                            const scale = 1 + Math.sin(performance.now() * 0.005) * 0.1;
+                            magnetGlow.scale.set(scale, scale, scale);
+                            requestAnimationFrame(pulseAnimation);
+                        };
+                        pulseAnimation();
+
+                        // Add rotating ring effect
+                        const ringGeometry = new THREE.TorusGeometry(0.5, 0.03, 8, 24);
+                        const ringMaterial = new THREE.MeshBasicMaterial({
+                            color: 0xFF0000,
+                            transparent: true,
+                            opacity: 0.4,
+                            blending: THREE.AdditiveBlending
+                        });
+                        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                        ring.rotation.x = Math.PI / 2;
+                        magnet.add(ring);
+
+                        // Animate ring rotation
+                        const rotateRing = () => {
+                            if (!magnet.parent) return;
+                            ring.rotation.z += 0.02;
+                            requestAnimationFrame(rotateRing);
+                        };
+                        rotateRing();
+
+                        this.scene.add(magnet);
+                        this.collectibles.push(magnet);
                         break;
                 }
             }
@@ -2025,30 +2112,119 @@
             checkCollectibleCollisions() {
                 // Check collectible collisions.
                 for (let i = this.collectibles.length - 1; i >= 0; i--) {
-                    const coin = this.collectibles[i];
-                    if (!coin || coin.userData.collected) continue;
+                    const collectible = this.collectibles[i];
+                    if (!collectible || collectible.userData.collected) continue;
+
                     const playerLeft = this.player.position.x - this.playerSize / 2;
                     const playerRight = this.player.position.x + this.playerSize / 2;
                     const playerBottom = this.player.position.y - this.playerSize / 2;
                     const playerTop = this.player.position.y + this.playerSize / 2;
-                    const coinWidth = coin.userData.width || 1;
-                    const coinHeight = coin.userData.height || 1;
-                    const coinLeft = coin.position.x - coinWidth / 2;
-                    const coinRight = coin.position.x + coinWidth / 2;
-                    const coinBottom = coin.position.y - coinHeight / 2;
-                    const coinTop = coin.position.y + coinHeight / 2;
-                    if (playerRight > coinLeft && playerLeft < coinRight &&
-                        playerBottom < coinTop && playerTop > coinBottom) {
-                        coin.userData.collected = true;
-                        this.scene.remove(coin);
-                        const coinValue = coin.userData.value || 100;
-                        this.score += coinValue;
-                        this.updateScoreDisplay();
+                    const collectibleWidth = collectible.userData.width || 1;
+                    const collectibleHeight = collectible.userData.height || 1;
+                    const collectibleLeft = collectible.position.x - collectibleWidth / 2;
+                    const collectibleRight = collectible.position.x + collectibleWidth / 2;
+                    const collectibleBottom = collectible.position.y - collectibleHeight / 2;
+                    const collectibleTop = collectible.position.y + collectibleHeight / 2;
 
-                        // Play coin collection sound
-                        this.playSound('coin');
+                    // If magnet is active, move coins towards the player
+                    if (this.hasMagnet && collectible.userData.type === 'coin') {
+                        const distanceX = this.player.position.x - collectible.position.x;
+                        const distanceY = this.player.position.y - collectible.position.y;
+                        const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+                        
+                        if (distance < this.magnetRange) {
+                            const directionX = distanceX / distance;
+                            const directionY = distanceY / distance;
+                            
+                            collectible.position.x += directionX * this.magnetAttractionSpeed * 0.016; // Assuming 60fps
+                            collectible.position.y += directionY * this.magnetAttractionSpeed * 0.016;
+                            
+                            // Update glow effect based on distance
+                            if (collectible.children.length > 0) {
+                                const glow = collectible.children[0];
+                                const glowIntensity = 1 - (distance / this.magnetRange);
+                                glow.material.opacity = 0.4 + glowIntensity * 0.4;
+                                const glowScale = 1 + glowIntensity * 0.5;
+                                glow.scale.set(glowScale, glowScale, glowScale);
+                            }
+                        }
+                    }
+
+                    if (playerRight > collectibleLeft && playerLeft < collectibleRight &&
+                        playerBottom < collectibleTop && playerTop > collectibleBottom) {
+                        
+                        collectible.userData.collected = true;
+                        this.scene.remove(collectible);
+                        
+                        if (collectible.userData.type === 'magnet') {
+                            // Activate magnet powerup
+                            this.activateMagnet();
+                            // No score for magnet pickup
+                        } else {
+                            // Regular coin collection
+                            const coinValue = collectible.userData.value || 100;
+                            this.score += coinValue;
+                            this.updateScoreDisplay();
+                            this.playSound('coin');
+                        }
                     }
                 }
+            }
+
+            activateMagnet() {
+                this.hasMagnet = true;
+                
+                // Create visual effect to show magnet is active
+                const magnetEffect = new THREE.Group();
+                magnetEffect.name = 'magnetEffect';
+                
+                // Create magnetic field visualization
+                const fieldGeometry = new THREE.RingGeometry(1, this.magnetRange, 32);
+                const fieldMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xFF0000,
+                    transparent: true,
+                    opacity: 0.2,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending
+                });
+                const field = new THREE.Mesh(fieldGeometry, fieldMaterial);
+                field.rotation.x = Math.PI / 2;
+                magnetEffect.add(field);
+                
+                // Add pulsing animation
+                const pulseAnimation = () => {
+                    if (!this.hasMagnet) {
+                        this.scene.remove(magnetEffect);
+                        return;
+                    }
+                    const scale = 1 + Math.sin(performance.now() * 0.005) * 0.1;
+                    field.material.opacity = 0.2 + Math.sin(performance.now() * 0.005) * 0.1;
+                    requestAnimationFrame(pulseAnimation);
+                };
+                
+                // Add the effect to the player
+                this.player.add(magnetEffect);
+                pulseAnimation();
+                
+                // Clear existing timer if any
+                if (this.magnetTimer) {
+                    clearTimeout(this.magnetTimer);
+                }
+                
+                // Set timer to deactivate magnet
+                this.magnetTimer = setTimeout(() => {
+                    this.hasMagnet = false;
+                    this.magnetTimer = null;
+                    this.player.remove(magnetEffect);
+                }, this.magnetDuration);
+                
+                // Play magnet activation sound
+                const magnetSound = new Audio();
+                magnetSound.src = 'assets/coin.wav'; // Reuse coin sound for now
+                magnetSound.volume = 0.5;
+                magnetSound.play().catch(error => {
+                    logDebug("Error playing magnet sound: " + error.message);
+                });
             }
 
             updateScoreDisplay() {
