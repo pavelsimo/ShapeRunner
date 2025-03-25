@@ -215,7 +215,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "WWWWW",
+                        "^^^^^",
                         "BBBBB",
                         "     ",
                         "     ",
@@ -243,7 +243,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "BWWWB"
+                        "B^^^B"
                     ],
                     "tile4": [
                         "     ",
@@ -263,7 +263,7 @@
                         "   BB",
                         "   VV",
                         "     ",
-                        "BBBWW"
+                        "BBB^^"
                     ],
                     "tile5": [
                         "     ",
@@ -275,7 +275,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        " WWW ",
+                        " ^^^ ",
                         " BBB ",
                         "     ",
                         "     ",
@@ -293,7 +293,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "WW   ",
+                        "^^   ",
                         "BB   ",
                         "     ",
                         "     ",
@@ -363,7 +363,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "BBBWW"
+                        "BBB^^"
                     ],
                     "tile10": [
                         "     ",
@@ -383,7 +383,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "BBBWW"
+                        "BBB^^"
                     ],    
                     "tile11": [
                         "     ",
@@ -403,7 +403,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "BBBWW"
+                        "BB^^B"
                     ],    
                     "tile12": [
                         "     ",
@@ -476,7 +476,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "  C  ",
+                        "     ",
                         "  C  ",
                         "  J  ",
                         "     ",
@@ -499,12 +499,52 @@
                         "     ",
                         "     ",
                         "     ",
-                        "CCCCC",
                         "     ",
+                        " CCC ",
+                        "     ",
+                        "     ",
+                        "BB^^B"  
+                    ],
+                    "tile16": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ", 
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "   C ",
+                        "     ",
+                        "  <B ",
+                        "  <B ",
+                        "BBBBB"  
+                    ],
+                    "tile17": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ", 
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  ^  ",
+                        " <B> ",
+                        " <B> ",
+                        "  V  ",
                         "     ",
                         "     ",
                         "BBBBB"  
-                    ]                                                                                                                             
+                    ]                                                                                                                                                 
                 };
             }
 
@@ -554,8 +594,9 @@
                     );
                     logDebug(`Available tiles: ${availableTiles.join(', ')}`);
 
-                    // Track the last selected tile to avoid repeats
-                    let lastTileType = null;
+                    // Track the last 3 tiles to prevent repetition within that window
+                    const recentTiles = [];
+                    const maxHistorySize = 3;
 
                     for (let i = 0; i < numSections; i++) {
                         // If there's only one tile type available, we have to use it
@@ -563,20 +604,32 @@
                             const tileType = availableTiles[0];
                             logDebug(`Adding tile: ${tileType}`);
                             appendTitle(this.levelTitles[tileType]);
-                            lastTileType = tileType;
+                            recentTiles.push(tileType);
+                            if (recentTiles.length > maxHistorySize) {
+                                recentTiles.shift();
+                            }
                             continue;
                         }
 
-                        // Select a random tile that's different from the last one
-                        let tileType;
-                        do {
-                            const randomIndex = Math.floor(Math.random() * availableTiles.length);
-                            tileType = availableTiles[randomIndex];
-                        } while (tileType === lastTileType && availableTiles.length > 1);
+                        // Filter out tiles that were used in the last 3 sections
+                        const validTiles = availableTiles.filter(tile => !recentTiles.includes(tile));
+
+                        // If no valid tiles (shouldn't happen with our tile count), use any tile except the last one
+                        const tilesToChooseFrom = validTiles.length > 0 ? validTiles : 
+                            availableTiles.filter(tile => tile !== recentTiles[recentTiles.length - 1]);
+
+                        // Select a random tile from valid options
+                        const randomIndex = Math.floor(Math.random() * tilesToChooseFrom.length);
+                        const tileType = tilesToChooseFrom[randomIndex];
 
                         logDebug(`Adding tile: ${tileType}`);
                         appendTitle(this.levelTitles[tileType]);
-                        lastTileType = tileType;
+
+                        // Update recent tiles history
+                        recentTiles.push(tileType);
+                        if (recentTiles.length > maxHistorySize) {
+                            recentTiles.shift();
+                        }
                     }
 
                     // Always end with the "end" section
@@ -1159,7 +1212,7 @@
                         const wireframe = new THREE.LineSegments(edges, lineMaterial);
                         platform.add(wireframe);
                         break;
-                    case 'W':
+                    case '^':
                         // Handle all upward spikes consistently - position them at the grid cell y-coordinate
                         // The base of the spike will be at exactly y, and the top will be at y + spikeSize
                         this.createSpike(x, y, 'up');
@@ -1167,6 +1220,14 @@
                     case 'V':
                         // Downward spike
                         this.createSpike(x, y, 'down');
+                        break;
+                    case '<':
+                        // Left spike
+                        this.createSpike(x - 0.5, y, 'left');
+                        break;
+                    case '>':
+                        // Right spike
+                        this.createSpike(x + 0.5, y + 0.5, 'right');
                         break;
                     case 'S':
                         this.startPosition = {x, y: y + 0.5};
@@ -1233,12 +1294,26 @@
                         halfSize, 0, 0,
                         0, spikeSize, 0
                     ]);
-                } else {
+                } else if (direction === 'down') {
                     // Downward spike - point should be at the bottom
                     vertices = new Float32Array([
                         -halfSize, 0, 0,
                         halfSize, 0, 0,
                         0, -spikeSize, 0
+                    ]);
+                } else if (direction === 'left') {
+                    // For left spikes, position at the right edge of the cell and offset up
+                    vertices = new Float32Array([
+                        0, -halfSize, 0,
+                        0, halfSize, 0,
+                        -spikeSize, 0, 0
+                    ]);
+                } else if (direction === 'right') {
+                    // Right spike - point should be on the right
+                    vertices = new Float32Array([
+                        0, -halfSize, 0,
+                        0, halfSize, 0,
+                        spikeSize, 0, 0
                     ]);
                 }
 
@@ -1278,9 +1353,15 @@
                 if (direction === 'up') {
                     // Position the base of the upward spike exactly at the given y coordinate
                     spike.position.set(x, y, 0);
-                } else {
+                } else if (direction === 'down') {
                     // For downward spikes, position at the top of the cell and move up to touch platform
                     spike.position.set(x, y + halfSize + 0.5, 0);
+                } else if (direction === 'left') {
+                    // For left spikes, position at the right edge of the cell and offset up
+                    spike.position.set(x + halfSize + 0.5, y + 0.5, 0);
+                } else if (direction === 'right') {
+                    // For right spikes, position at the left edge of the cell
+                    spike.position.set(x - halfSize - 0.5, y, 0);
                 }
 
                 this.scene.add(spike);
@@ -2889,4 +2970,3 @@
 </script>
 </body>
 </html> 
-d wa
