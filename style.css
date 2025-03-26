@@ -307,4 +307,17 @@ canvas {
         padding: 4px !important;
         border-top-left-radius: 6px !important;
     }
+}
+
+#final-score {
+    font-size: 24px;
+    margin-bottom: 25px;
+    text-shadow: 0 0 5px var(--theme-color, #00FFFF);
+}
+
+#high-score {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #FFD700;
+    text-shadow: 0 0 5px #FFD700;
 } 

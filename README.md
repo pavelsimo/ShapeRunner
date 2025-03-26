@@ -27,12 +27,18 @@ The game uses a tile-based level system with the following ASCII characters:
 | `/` | Slope (upward) |
 | `J` | Jump Pad |
 | `C` | Coin (collectible) |
-| `P` | Portal |
 | `K` | Key (collectible) |
-| `O` | Saw Blade (hazard) |
 | `S` | Start Position |
 | `E` | End Position |
-| `.` | Empty Space |
+| `=` | Magnet (special power-up) |
+| `*` | Invisibility (special power-up) |
+| `O` | Viberse Enter Portal |
+| `Q` | Viberse Exit Portal |
+| `V` | Vertical Platform |
+| `L` | Left-moving Platform |
+| `R` | Right-moving Platform |
+| `U` | Up-moving Platform |
+| `D` | Down-moving Platform |
 
 ### Level Organization
 
@@ -40,6 +46,10 @@ The game uses a tile-based level system with the following ASCII characters:
 - Titles are stored as JSON files in the `levels` directory
 - A level always begins with a start section and ends with an end section
 - Middle sections are randomly selected based on the level difficulty
+- Each section is 18 rows tall
+- The game supports up to 5 levels
+- Special items (magnet, invisibility, portals) are limited to one per level
+- The system prevents the same tile from appearing within 3 sections of itself
 
 ### Creating Custom Levels
 
@@ -50,7 +60,7 @@ You can create your own level titles by adding new JSON files to the `levels` di
   "title": "My Custom Level",
   "description": "A description of the level",
   "width": 20,
-  "height": 8,
+  "height": 18,
   "layout": [
     ".....................",
     "............C........",
@@ -59,10 +69,22 @@ You can create your own level titles by adding new JSON files to the `levels` di
     "......../............",
     "...J.../....C........",
     "...B../...BBB........",
-    "^..../..^....^......."
+    "^..../..^....^.......",
+    ".....................",
+    ".....................",
+    ".....................",
+    ".....................",
+    ".....................",
+    ".....................",
+    ".....................",
+    ".....................",
+    ".....................",
+    "BBBBB"
   ]
 }
 ```
+
+Note: The height should be 18 rows to match the game's section height.
 
 ## Development
 

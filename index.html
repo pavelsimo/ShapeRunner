@@ -24,6 +24,7 @@
 <div id="game-over">
     <h2>GAME OVER</h2>
     <div id="final-score">SCORE: 0</div>
+    <div id="high-score">HIGH SCORE: 0</div>
     <button id="retry-btn">RETRY</button>
 </div>
 
@@ -36,6 +37,37 @@
     // Debug logging utility
     const debug = document.getElementById('debug-console');
     debug.style.display = 'block';
+
+    // Cookie management functions
+    function setCookie(name, value, days) {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for(let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    }
+
+    function updateHighScore(score) {
+        const currentHighScore = parseInt(getCookie('highScore') || '0');
+        if (score > currentHighScore) {
+            setCookie('highScore', score, 365); // Store for 1 year
+            return score;
+        }
+        return currentHighScore;
+    }
 
     function logDebug(message) {
         if (debug) {
@@ -465,7 +497,7 @@
                         "     ",
                         "BBBBB"
                     ],  
-                    "tile14": [
+                    "tile15": [
                         "     ",
                         "     ",
                         "     ",
@@ -485,7 +517,7 @@
                         "     ",
                         "BBBBB",
                     ],
-                    "tile15": [
+                    "tile16": [
                         "     ",
                         "     ",
                         "     ",
@@ -505,7 +537,7 @@
                         "     ",
                         "BB^^B"  
                     ],
-                    "tile16": [
+                    "tile17": [
                         "     ",
                         "     ",
                         "     ",
@@ -525,7 +557,7 @@
                         "  <B ",
                         "BBBBB"  
                     ],
-                    "tile17": [
+                    "tile18": [
                         "     ",
                         "     ",
                         "     ",
@@ -545,7 +577,7 @@
                         "     ",
                         "BBBBB"  
                     ],
-                    "tile18": [
+                    "tile19": [
                         "     ",
                         "     ",
                         "     ",
@@ -565,7 +597,7 @@
                         "     ",
                         "BBBBB"  
                     ],
-                    "tile19": [
+                    "tile20": [
                         "     ",
                         "     ",
                         "     ",
@@ -725,6 +757,7 @@
                 this.gameOverUI = document.getElementById('game-over');
                 this.finalScore = document.getElementById('final-score');
                 this.retryBtn = document.getElementById('retry-btn');
+                this.highScore = document.getElementById('high-score');
 
                 // Constants
                 this.tileSize = 2;
@@ -1649,6 +1682,9 @@
             }
 
             handleKeyDown(event) {
+                // Don't handle input if game is over
+                if (this.gameOverUI.style.display === 'block') return;
+                
                 if (!this.isRunning || this.isPaused) return;
 
                 if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
@@ -1693,44 +1729,22 @@
             }
 
             restart() {
-                logDebug("Restarting game");
+                // Reset the game state
                 this.score = 0;
-                this.gameOverUI.style.display = 'none';
-                this.isRunning = true;
-                this.isPaused = false;
-
-                // Reset death counter
                 this.levelDeathCount = 0;
-
-                // Reset level manager to level 1
+                this.currentLevel = 1;
                 this.levelManager.currentLevel = 1;
-
-                // Reset player velocities
-                this.playerVelocity.x = this.baseVelocity; // Use baseVelocity property
-                this.playerVelocity.y = 0;
-                this.isJumping = false;
-
-                // Create level first to ensure platforms are in place
-                this.createLevel();
-
-                // Position player at the beginning of the level
-                // Use start position from level data if available, otherwise use default position
-                if (!this.startPosition) {
-                    // Position at the far left of the level
-                    this.player.position.set(-39, this.groundY + 1.0 + this.playerSize / 2, 0);
-                } else {
-                    // Use the start position from the level
-                    this.player.position.set(this.startPosition.x, this.startPosition.y + this.playerSize / 2, 0);
-                }
-
-                // Force ground state for immediate collision recognition
-                this.onGround = true;
-
-                // Update UI elements
-                this.updateScoreDisplay();
-                this.updateLevelDisplay();
-                this.updateUITheme();
-
+                
+                // Hide game over UI
+                this.gameOverUI.style.display = 'none';
+                
+                // Reset the player
+                this.resetPlayerInLevel();
+                
+                // Update UI
+                this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
+                this.levelDisplay.textContent = `LEVEL ${this.currentLevel}`;
+                
                 // Restart background music
                 this.playBackgroundMusic();
             }
@@ -1747,6 +1761,12 @@
             }
 
             update(deltaTime) {
+                // Don't update player movement if game is over
+                if (this.gameOverUI.style.display === 'block') {
+                    this.renderer.render(this.scene, this.camera);
+                    return;
+                }
+
                 this.playerVelocity.y -= this.gravity * deltaTime;
                 this.playerVelocity.y = Math.max(this.playerVelocity.y, -30);
                 if (this.playerVelocity.x < this.baseVelocity) {
@@ -1754,6 +1774,12 @@
                 }
                 this.player.position.x += this.playerVelocity.x * deltaTime;
                 this.player.position.y += this.playerVelocity.y * deltaTime;
+
+                // Only update score if game is not over
+                if (!this.gameOverUI.style.display || this.gameOverUI.style.display === 'none') {
+                    this.score += deltaTime * 10; // Score based on time
+                    this.updateScoreDisplay();
+                }
 
                 // Handle player rotation during jumps
                 if (this.isJumping) {
@@ -1806,8 +1832,6 @@
                 this.checkCollisions();
                 this.updatePortal(deltaTime);
                 this.camera.position.x = this.player.position.x;
-                this.score += deltaTime * 10;
-                this.updateScoreDisplay();
                 if (this.playerGlow) {
                     const scaleFactor = 1 + Math.sin(performance.now() * 0.005) * 0.1;
                     this.playerGlow.scale.set(scaleFactor, scaleFactor, scaleFactor);
@@ -2362,7 +2386,9 @@
             }
 
             updateScoreDisplay() {
-                this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
+                if (!this.gameOverUI.style.display || this.gameOverUI.style.display === 'none') {
+                    this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
+                }
             }
 
             updateLevelDisplay() {
@@ -2458,6 +2484,26 @@
             gameOver() {
                 // Instead of ending the game, reset the player in the current level
                 this.resetPlayerInLevel();
+                const currentScore = Math.floor(this.score);
+                const highScore = updateHighScore(currentScore);
+                
+                this.finalScore.textContent = `SCORE: ${currentScore}`;
+                this.highScore.textContent = `HIGH SCORE: ${highScore}`;
+                
+                this.gameOverUI.style.display = 'block';
+                // Pause background music on game over
+                this.pauseBackgroundMusic();
+            }
+
+            realGameOver() {
+                const currentScore = Math.floor(this.score);
+                const highScore = updateHighScore(currentScore);
+                
+                this.finalScore.textContent = `SCORE: ${currentScore}`;
+                this.highScore.textContent = `HIGH SCORE: ${highScore}`;
+                
+                this.gameOverUI.style.display = 'block';
+                this.pauseBackgroundMusic();
             }
 
             resetPlayerInLevel() {
@@ -3139,19 +3185,11 @@
                 fadeAnimation();
             }
 
-            // Real game over function when player wants to end game
-            realGameOver() {
-                logDebug("Game over");
-                this.isRunning = false;
-                this.finalScore.textContent = `SCORE: ${Math.floor(this.score)}`;
-                this.gameOverUI.style.display = 'block';
-
-                // Pause background music on game over
-                this.pauseBackgroundMusic();
-            }
-
             // Add this new method to handle jumping
             jump() {
+                // Don't allow jumping if game is over
+                if (this.gameOverUI.style.display === 'block') return;
+
                 // Prevent repeated jumping if already in the air and not near a platform
                 const canJump = this.onGround || this.onPlatform ||
                     (this.playerVelocity.y > -3 && this.playerVelocity.y <= 0);
@@ -3168,14 +3206,6 @@
 
                     // Play jump sound
                     this.playSound('jump');
-
-                    if (this.showJumpPath) {
-                        this.jumpHistoryPoints = [];
-                        if (this.jumpPath) {
-                            this.scene.remove(this.jumpPath);
-                            this.jumpPath = null;
-                        }
-                    }
                 }
             }
             
