@@ -1738,12 +1738,19 @@
                 // Hide game over UI
                 this.gameOverUI.style.display = 'none';
                 
+                // Generate a new level since it's a fresh start
+                this.createLevel();
+                
                 // Reset the player
                 this.resetPlayerInLevel();
                 
                 // Update UI
                 this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
                 this.levelDisplay.textContent = `LEVEL ${this.currentLevel}`;
+                
+                // Restart the game
+                this.isRunning = true;
+                this.isPaused = false;
                 
                 // Restart background music
                 this.playBackgroundMusic();
@@ -1761,8 +1768,14 @@
             }
 
             update(deltaTime) {
-                // Don't update player movement if game is over
+                // Don't update anything if game is over
                 if (this.gameOverUI.style.display === 'block') {
+                    this.renderer.render(this.scene, this.camera);
+                    return;
+                }
+
+                // Don't update if game is not running
+                if (!this.isRunning) {
                     this.renderer.render(this.scene, this.camera);
                     return;
                 }
@@ -2504,6 +2517,20 @@
                 
                 this.gameOverUI.style.display = 'block';
                 this.pauseBackgroundMusic();
+
+                // Stop the game completely
+                this.isRunning = false;
+                this.isPaused = true;
+
+                // Reset game state but don't create new level yet
+                this.score = 0;
+                this.levelDeathCount = 0;
+                this.currentLevel = 1;
+                this.levelManager.currentLevel = 1;
+                
+                // Update UI
+                this.scoreDisplay.textContent = `SCORE: ${Math.floor(this.score)}`;
+                this.levelDisplay.textContent = `LEVEL ${this.currentLevel}`;
             }
 
             resetPlayerInLevel() {
@@ -2530,7 +2557,7 @@
                 this.createDeathEffect(playerX, playerY);
 
                 // Reset player velocity and rotation
-                this.playerVelocity.x = this.baseVelocity; // Use baseVelocity property
+                this.playerVelocity.x = this.baseVelocity;
                 this.playerVelocity.y = 0;
                 this.isJumping = false;
                 this.player.rotation.z = 0;
@@ -2544,11 +2571,8 @@
                     this.player.position.set(this.startPosition.x, this.startPosition.y + this.playerSize / 2, 0);
                 }
 
-                // Ensure player is on ground
+                // Force ground state for immediate collision recognition
                 this.onGround = true;
-
-                // Show temporary invincibility effect
-                this.showInvincibilityEffect();
             }
 
             showInvincibilityEffect() {
