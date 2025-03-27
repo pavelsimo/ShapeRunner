@@ -451,7 +451,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "BBB  ",
+                        " WW  ",
                         "     ",
                         "     ",
                         "     ",
@@ -616,7 +616,87 @@
                         "     ",
                         "     ",
                         "BBBBB"  
-                    ]                                                                                                                                                 
+                    ],
+                    "tile21": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ", 
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",                                                
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  X  ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"  
+                    ],
+                    "tile22": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        " WWW ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ],
+                    "tile23": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        " MMM ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ],
+                    "tile24": [
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "  U  ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "     ",
+                        "BBBBB"
+                    ]
                 };
             }
 
@@ -1310,6 +1390,8 @@
 
                 switch (type) {
                     case 'B':
+                    case 'M':
+                    case 'W':
                         const platformGeometry = new THREE.BoxGeometry(1, 1, 1);
                         const platformMaterial = new THREE.MeshBasicMaterial({
                             color: theme.platform,
@@ -1319,7 +1401,15 @@
                         const platform = new THREE.Mesh(platformGeometry, platformMaterial);
                         // Position platform in center of grid cell
                         platform.position.set(x, y + platformHeight / 2, 0);
-                        platform.userData = {type: 'platform', width: 1, height: 1};
+                        platform.userData = {
+                            type: type === 'M' ? 'movingPlatformVertical' : 
+                                  type === 'W' ? 'movingPlatformHorizontal' : 'platform',
+                            width: 1, 
+                            height: 1,
+                            startPos: { x: x, y: y + platformHeight / 2 },
+                            moveTime: 0,
+                            moveSpeed: 2 // Complete one cycle every 2 seconds
+                        };
                         this.scene.add(platform);
                         this.platforms.push(platform);
                         const edges = new THREE.EdgesGeometry(platformGeometry);
@@ -1527,6 +1617,101 @@
 
                         this.scene.add(star);
                         this.collectibles.push(star);
+                        break;
+                    case 'U':
+                        // Create the black hole core
+                        const blackHoleGeometry = new THREE.CircleGeometry(0.5, 32);
+                        const blackHoleMaterial = new THREE.MeshBasicMaterial({
+                            color: 0x000000,
+                            transparent: true,
+                            opacity: 0.95,
+                            side: THREE.DoubleSide
+                        });
+                        const blackHole = new THREE.Mesh(blackHoleGeometry, blackHoleMaterial);
+                        blackHole.position.set(x, y + 0.5, 0);
+                        blackHole.userData = {
+                            type: 'blackHole',
+                            width: 1,
+                            height: 1,
+                            pullRadius: 3,
+                            pullForce: 15,
+                            deadly: true
+                        };
+                        this.scene.add(blackHole);
+                        this.obstacles.push(blackHole);
+
+                        // Add danger glow effect
+                        const dangerGlowGeometry = new THREE.CircleGeometry(0.6, 32);
+                        const dangerGlowMaterial = new THREE.MeshBasicMaterial({
+                            color: 0xff0000,
+                            transparent: true,
+                            opacity: 0.4,
+                            blending: THREE.AdditiveBlending,
+                            side: THREE.DoubleSide
+                        });
+                        const dangerGlow = new THREE.Mesh(dangerGlowGeometry, dangerGlowMaterial);
+                        blackHole.add(dangerGlow);
+
+                        // Add outer purple glow
+                        const blackHoleGlowGeometry = new THREE.CircleGeometry(0.8, 32);
+                        const blackHoleGlowMaterial = new THREE.MeshBasicMaterial({
+                            color: 0x4400ff,
+                            transparent: true,
+                            opacity: 0.3,
+                            blending: THREE.AdditiveBlending,
+                            side: THREE.DoubleSide
+                        });
+                        const blackHoleGlow = new THREE.Mesh(blackHoleGlowGeometry, blackHoleGlowMaterial);
+                        blackHole.add(blackHoleGlow);
+
+                        // Add multiple rotating rings for vortex effect
+                        const ringColors = [0xff0000, 0x6600ff, 0x4400ff];
+                        const ringScales = [0.7, 0.9, 1.1];
+                        const ringRotationSpeeds = [3, 2, 1.5];
+
+                        for (let i = 0; i < ringScales.length; i++) {
+                            const blackHoleRingGeometry = new THREE.RingGeometry(
+                                ringScales[i] - 0.1,
+                                ringScales[i],
+                                32,
+                                1,
+                                0,
+                                Math.PI * 2
+                            );
+                            const blackHoleRingMaterial = new THREE.MeshBasicMaterial({
+                                color: ringColors[i],
+                                transparent: true,
+                                opacity: 0.5 - (i * 0.1),
+                                side: THREE.DoubleSide,
+                                blending: THREE.AdditiveBlending
+                            });
+                            const blackHoleRing = new THREE.Mesh(blackHoleRingGeometry, blackHoleRingMaterial);
+                            blackHoleRing.userData.rotationSpeed = ringRotationSpeeds[i];
+                            blackHoleRing.userData.isVortexRing = true;
+                            blackHole.add(blackHoleRing);
+                        }
+
+                        // Add warning spikes around the black hole
+                        const spikeCount = 8;
+                        for (let i = 0; i < spikeCount; i++) {
+                            const angle = (i / spikeCount) * Math.PI * 2;
+                            const spikeGeometry = new THREE.BufferGeometry();
+                            const vertices = new Float32Array([
+                                0, 0, 0,
+                                Math.cos(angle) * 0.3, Math.sin(angle) * 0.3, 0,
+                                Math.cos(angle + 0.1) * 0.3, Math.sin(angle + 0.1) * 0.3, 0
+                            ]);
+                            spikeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                            const spikeMaterial = new THREE.MeshBasicMaterial({
+                                color: 0xff0000,
+                                transparent: true,
+                                opacity: 0.7,
+                                side: THREE.DoubleSide
+                            });
+                            const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                            spike.position.set(1.2 * Math.cos(angle), 1.2 * Math.sin(angle), 0);
+                            blackHole.add(spike);
+                        }
                         break;
                 }
             }
@@ -1779,6 +1964,68 @@
                     this.renderer.render(this.scene, this.camera);
                     return;
                 }
+
+                // Update black holes
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.userData.type === 'blackHole') {
+                        // Rotate the vortex rings with different speeds and pulsing
+                        obstacle.children.forEach(child => {
+                            if (child.userData.isVortexRing) {
+                                child.rotation.z += child.userData.rotationSpeed * deltaTime;
+                                
+                                // Add pulsing effect to the rings
+                                const pulseSpeed = 2;
+                                const pulseAmount = 0.2;
+                                child.scale.x = child.scale.y = 1 + Math.sin(this.lastTime * pulseSpeed * 0.001) * pulseAmount;
+                            }
+                        });
+
+                        // Pulse the danger glow
+                        const dangerGlow = obstacle.children[0];
+                        if (dangerGlow) {
+                            dangerGlow.material.opacity = 0.4 + Math.sin(this.lastTime * 0.005) * 0.2;
+                        }
+
+                        // Check if player is within pull radius
+                        const dx = obstacle.position.x - this.player.position.x;
+                        const dy = obstacle.position.y - this.player.position.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < obstacle.userData.pullRadius) {
+                            // Calculate pull force based on distance
+                            const pullStrength = (1 - distance / obstacle.userData.pullRadius) * obstacle.userData.pullForce;
+                            
+                            // Apply gravitational pull
+                            const angle = Math.atan2(dy, dx);
+                            this.playerVelocity.x += Math.cos(angle) * pullStrength * deltaTime;
+                            this.playerVelocity.y += Math.sin(angle) * pullStrength * deltaTime;
+
+                            // If too close, trigger explosion and death
+                            if (distance < 0.8) {
+                                this.createBlackHoleExplosion(this.player.position.x, this.player.position.y);
+                                this.resetPlayerInLevel();
+                                return;
+                            }
+                        }
+                    }
+                });
+
+                // Update moving platforms
+                this.platforms.forEach(platform => {
+                    if (platform.userData.type === 'movingPlatformVertical' || 
+                        platform.userData.type === 'movingPlatformHorizontal') {
+                        
+                        platform.userData.moveTime += deltaTime;
+                        const t = (platform.userData.moveTime * Math.PI) / platform.userData.moveSpeed;
+                        const offset = Math.sin(t);
+                        
+                        if (platform.userData.type === 'movingPlatformVertical') {
+                            platform.position.y = platform.userData.startPos.y + offset;
+                        } else {
+                            platform.position.x = platform.userData.startPos.x + offset;
+                        }
+                    }
+                });
 
                 this.playerVelocity.y -= this.gravity * deltaTime;
                 this.playerVelocity.y = Math.max(this.playerVelocity.y, -30);
@@ -3435,6 +3682,59 @@
                 invisibilitySound.play().catch(error => {
                     logDebug("Error playing invisibility sound: " + error.message);
                 });
+            }
+
+            createBlackHoleExplosion(x, y) {
+                const particleCount = 20;
+                const particles = [];
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const angle = (i / particleCount) * Math.PI * 2;
+                    const speed = 5 + Math.random() * 5;
+                    
+                    const particleGeometry = new THREE.CircleGeometry(0.1, 8);
+                    const particleMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x6600ff,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                    particle.position.set(x, y, 0);
+                    
+                    particle.userData = {
+                        velocityX: Math.cos(angle) * speed,
+                        velocityY: Math.sin(angle) * speed,
+                        life: 1.0
+                    };
+                    
+                    this.scene.add(particle);
+                    particles.push(particle);
+                }
+                
+                // Create a function to update and remove particles
+                const updateParticles = () => {
+                    if (!this.isRunning) return;
+                    
+                    for (let i = particles.length - 1; i >= 0; i--) {
+                        const particle = particles[i];
+                        particle.position.x += particle.userData.velocityX * 0.016;
+                        particle.position.y += particle.userData.velocityY * 0.016;
+                        particle.userData.life -= 0.016 * 2;
+                        particle.material.opacity = particle.userData.life;
+                        
+                        if (particle.userData.life <= 0) {
+                            this.scene.remove(particle);
+                            particles.splice(i, 1);
+                        }
+                    }
+                    
+                    if (particles.length > 0) {
+                        requestAnimationFrame(updateParticles);
+                    }
+                };
+                
+                updateParticles();
             }
         }
 
