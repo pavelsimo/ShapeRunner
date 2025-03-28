@@ -2153,20 +2153,13 @@
                 // Don't handle input if game is over
                 if (this.gameOverUI.style.display === 'block') return;
                 
-                if (!this.isRunning || this.isPaused) return;
-
-                if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
-                    this.jump();
-                }
-                if (event.code === 'ArrowRight') {
-                    this.playerVelocity.x = this.boostVelocity; // Use boostVelocity for speed boost
-                    setTimeout(() => {
-                        if (this.isRunning) this.playerVelocity.x = this.baseVelocity; // Reset to baseVelocity
-                    }, 500);
-                }
+                // Handle pause toggle regardless of game state
                 if (event.code === 'KeyP' || event.code === 'Escape') {
                     this.togglePause();
+                    return;
                 }
+
+                // Handle mute toggle regardless of game state
                 if (event.code === 'KeyM') {
                     // Toggle mute state
                     this.isMuted = !this.isMuted;
@@ -2182,6 +2175,20 @@
                     });
                     
                     logDebug("Audio " + (this.isMuted ? "muted" : "unmuted"));
+                    return;
+                }
+
+                // Don't handle other inputs if game is not running or is paused
+                if (!this.isRunning || this.isPaused) return;
+
+                if (event.code === 'Space' || event.code === 'ArrowUp' || event.code === 'KeyW') {
+                    this.jump();
+                }
+                if (event.code === 'ArrowRight') {
+                    this.playerVelocity.x = this.boostVelocity; // Use boostVelocity for speed boost
+                    setTimeout(() => {
+                        if (this.isRunning) this.playerVelocity.x = this.baseVelocity; // Reset to baseVelocity
+                    }, 500);
                 }
             }
 
