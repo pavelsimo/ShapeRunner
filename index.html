@@ -859,6 +859,9 @@
                 this.retryBtn = document.getElementById('retry-btn');
                 this.highScore = document.getElementById('high-score');
 
+                // Add isMuted property
+                this.isMuted = false;
+
                 // Constants
                 this.tileSize = 2;
                 this.groundY = -8;
@@ -1279,7 +1282,7 @@
             // Play a sound with the given name
             playSound(name, volume = 0.5) {
                 try {
-                    if (!this.sounds[name]) return;
+                    if (!this.sounds[name] || this.isMuted) return;
 
                     // Clone the audio to allow overlapping sounds
                     const sound = this.sounds[name].cloneNode();
@@ -1299,12 +1302,14 @@
             playBackgroundMusic() {
                 if (!this.backgroundMusic) return;
 
+                this.backgroundMusic.volume = this.isMuted ? 0 : 0.3;
                 this.backgroundMusic.play().catch(error => {
                     // Handle autoplay restrictions - try again after user interaction
                     logDebug(`Error playing background music: ${error.message}`);
 
                     // Add one-time click listener to start music after user interaction
                     const startAudio = () => {
+                        this.backgroundMusic.volume = this.isMuted ? 0 : 0.3;
                         this.backgroundMusic.play();
                         document.removeEventListener('click', startAudio);
                         document.removeEventListener('keydown', startAudio);
@@ -2143,6 +2148,22 @@
                 }
                 if (event.code === 'KeyP' || event.code === 'Escape') {
                     this.togglePause();
+                }
+                if (event.code === 'KeyM') {
+                    // Toggle mute state
+                    this.isMuted = !this.isMuted;
+                    
+                    // Update background music volume
+                    if (this.backgroundMusic) {
+                        this.backgroundMusic.volume = this.isMuted ? 0 : 0.3;
+                    }
+                    
+                    // Update all sound effects volume
+                    Object.values(this.sounds).forEach(sound => {
+                        sound.volume = this.isMuted ? 0 : 0.5;
+                    });
+                    
+                    logDebug("Audio " + (this.isMuted ? "muted" : "unmuted"));
                 }
             }
 
