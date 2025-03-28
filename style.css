@@ -314,4 +314,112 @@ canvas {
     margin-bottom: 20px;
     color: #FFD700;
     text-shadow: 0 0 5px #FFD700;
+}
+
+/* Add controls info window styles */
+#controls-info {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    transform: none;
+    text-align: left;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--theme-color, #00FFFF);
+    border-radius: 4px;
+    padding: 10px;
+    box-shadow: 0 0 10px var(--theme-color, #00FFFF);
+    z-index: 30;
+    color: var(--theme-color, #00FFFF);
+    width: 300px;
+    font-family: monospace;
+    animation: fadeInOut 5s forwards;
+}
+
+#controls-info h2 {
+    text-align: left;
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    text-shadow: 0 0 5px var(--theme-color, #00FFFF);
+    text-transform: uppercase;
+    font-family: 'Orbitron', sans-serif;
+}
+
+#controls-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#controls-info li {
+    margin: 0;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+}
+
+#controls-info .key {
+    background-color: rgba(0, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 8px;
+    min-width: 60px;
+    text-align: center;
+    border: 1px solid var(--theme-color, #00FFFF);
+    box-shadow: 0 0 3px var(--theme-color, #00FFFF);
+    font-family: 'Orbitron', sans-serif;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(20px); }
+    10% { opacity: 0.9; transform: translateY(0); }
+    80% { opacity: 0.9; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(20px); }
+}
+
+@media screen and (max-width: 768px) {
+    #controls-info {
+        width: 250px;
+        padding: 8px;
+    }
+    
+    #controls-info h2 {
+        font-size: 12px;
+        margin-bottom: 6px;
+    }
+    
+    #controls-info li {
+        font-size: 11px;
+    }
+    
+    #controls-info .key {
+        min-width: 50px;
+        padding: 1px 4px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    #controls-info {
+        width: 200px;
+        padding: 6px;
+        bottom: 5px;
+        left: 5px;
+    }
+    
+    #controls-info h2 {
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+    
+    #controls-info li {
+        font-size: 10px;
+    }
+    
+    #controls-info .key {
+        min-width: 45px;
+        padding: 1px 3px;
+        margin-right: 6px;
+    }
 } 

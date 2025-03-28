@@ -28,6 +28,15 @@
     <button id="retry-btn">RETRY</button>
 </div>
 
+<div id="controls-info">
+    <h2>CONTROLS</h2>
+    <ul>
+        <li><span class="key">SPACE</span> Jump</li>
+        <li><span class="key">P</span> Pause Game</li>
+        <li><span class="key">M</span> Toggle Audio</li>
+    </ul>
+</div>
+
 <div id="debug-console"></div>
 
 <!-- Load THREE.js from CDN -->
@@ -1361,6 +1370,15 @@
                     this.createPlayer();
                     this.createLevel();
                     this.updateUITheme();
+
+                    // Show controls info
+                    const controlsInfo = document.getElementById('controls-info');
+                    controlsInfo.style.display = 'block';
+                    
+                    // Hide controls info after animation
+                    setTimeout(() => {
+                        controlsInfo.style.display = 'none';
+                    }, 5000);
 
                     this.isRunning = true;
                     this.lastTime = performance.now();
