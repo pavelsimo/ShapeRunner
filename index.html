@@ -690,7 +690,7 @@
                         "     ",
                         "     ",
                         "     ",
-                        "  U  ",
+                        "  U  ",   
                         "     ",
                         "     ",
                         "     ",
@@ -1965,6 +1965,39 @@
                     return;
                 }
 
+                // Update portal effects
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.userData.type === 'exitPortal') {
+                        // Update animation time
+                        obstacle.userData.animationData.time += deltaTime;
+                        const time = obstacle.userData.animationData.time;
+
+                        // Animate spikes
+                        obstacle.children.forEach(child => {
+                            if (child.geometry instanceof THREE.BufferGeometry && 
+                                child.geometry.attributes.position.count === 3) {
+                                const scale = 1 + Math.sin(time * child.userData.pulseSpeed) * 0.2;
+                                child.scale.set(scale, scale, 1);
+                            }
+                        });
+
+                        // Rotate the glow ring
+                        obstacle.children.forEach(child => {
+                            if (child.geometry instanceof THREE.RingGeometry) {
+                                child.rotation.z += deltaTime * 2;
+                            }
+                        });
+
+                        // Pulse the outer glow
+                        const outerGlow = obstacle.children.find(child => 
+                            child.geometry instanceof THREE.CircleGeometry);
+                        if (outerGlow) {
+                            const pulseScale = 1 + Math.sin(time * 3) * 0.1;
+                            outerGlow.scale.set(pulseScale, pulseScale, 1);
+                        }
+                    }
+                });
+
                 // Update black holes
                 this.obstacles.forEach(obstacle => {
                     if (obstacle.userData.type === 'blackHole') {
@@ -2268,7 +2301,7 @@
             }
             
             createExitVibeVersePortal(x, y) {
-                this.createTeleportPortal(x, y, 'VIBEVERSE PORTAL', 0x00FF00, () => {
+                this.createTeleportPortal(x, y, 'VIBEVERSE PORTAL', 0x00ff00, () => {
                     logDebug("Player Exited VibeVerse!");                    
                     this.animatePlayerEnteringPortal(x, y, () => {
                         exitPortalRedirection();
@@ -2277,7 +2310,7 @@
             }
 
             createEnterVibeVersePortal(x, y) {
-                this.createTeleportPortal(x, y, 'METAVERSE PORTAL', 0x800080, () => {                   
+                this.createTeleportPortal(x, y, 'METAVERSE PORTAL', 0xff0000, () => {                   
                     this.animatePlayerEnteringPortal(x, y, () => {
                         startPortalRedirection();
                     });                 
@@ -2285,20 +2318,17 @@
             }
             
             createTeleportPortal(x, y, label, portalColor, onCollision) {
-                // Create the exit portal with a customizable appearance
+                // Create the portal with a vibrant glow effect based on the provided color
                 const portalRadius = 0.7;
                 const theme = this.getTheme();
 
-                // Create an inner circle with a lighter color
-                const innerRadius = portalRadius * 0.6;
-                const innerColor = new THREE.Color(portalColor).multiplyScalar(1.5); // Lighter version of portal color
-
-                // Main portal circle
+                // Main portal circle - dark center
                 const portalGeometry = new THREE.CircleGeometry(portalRadius, 32);
                 const portalMaterial = new THREE.MeshBasicMaterial({
-                    color: portalColor,
+                    color: 0x000000,
                     transparent: true,
-                    opacity: 0.7
+                    opacity: 0.9,
+                    side: THREE.DoubleSide
                 });
                 const exitPortal = new THREE.Mesh(portalGeometry, portalMaterial);
                 exitPortal.position.set(x, y + 0.5, 0);
@@ -2311,144 +2341,115 @@
                     })
                 };
 
-                // Add inner portal circle with alpha transparency
-                const innerPortalGeometry = new THREE.CircleGeometry(innerRadius, 32);
-                const innerPortalMaterial = new THREE.MeshBasicMaterial({
-                    color: innerColor,
-                    transparent: true,
-                    opacity: 0.9
-                });
-                const innerPortal = new THREE.Mesh(innerPortalGeometry, innerPortalMaterial);
-                innerPortal.position.z = 0.01; // Slightly in front of the main portal
-                exitPortal.add(innerPortal);
-
-                // Add center alpha hole to create portal effect
-                const centerRadius = innerRadius * 0.7;
-                const centerGeometry = new THREE.CircleGeometry(centerRadius, 32);
-                const centerMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xFFFFFF,
-                    transparent: true,
-                    opacity: 0.2,
-                    side: THREE.DoubleSide
-                });
-                const centerPortal = new THREE.Mesh(centerGeometry, centerMaterial);
-                centerPortal.position.z = 0.02; // Slightly in front of the inner portal
-                exitPortal.add(centerPortal);
-
-                // Add edge glow effect
-                const portalEdges = new THREE.EdgesGeometry(portalGeometry);
-                const portalLineMaterial = new THREE.LineBasicMaterial({
-                    color: innerColor,
-                    linewidth: 2
-                });
-                const portalWireframe = new THREE.LineSegments(portalEdges, portalLineMaterial);
-                exitPortal.add(portalWireframe);
-
-                // Enhanced outer glow with multiple layers
-                const glowGeometry = new THREE.CircleGeometry(portalRadius * 1.2, 32);
-                const glowMaterial = new THREE.MeshBasicMaterial({
+                // Add intense glow ring with the specified color
+                const glowRingGeometry = new THREE.RingGeometry(portalRadius * 0.9, portalRadius * 1.1, 32);
+                const glowRingMaterial = new THREE.MeshBasicMaterial({
                     color: portalColor,
                     transparent: true,
-                    opacity: 0.3,
-                    side: THREE.BackSide
+                    opacity: 0.8,
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending
                 });
-                const exitGlow = new THREE.Mesh(glowGeometry, glowMaterial);
-                exitPortal.add(exitGlow);
-                
-                // Add a second, larger glow for more effect
-                const outerGlowGeometry = new THREE.CircleGeometry(portalRadius * 1.5, 32);
+                const glowRing = new THREE.Mesh(glowRingGeometry, glowRingMaterial);
+                glowRing.position.z = 0.01;
+                exitPortal.add(glowRing);
+
+                // Add outer glow layers with the specified color
+                const outerGlowGeometry = new THREE.CircleGeometry(portalRadius * 1.3, 32);
                 const outerGlowMaterial = new THREE.MeshBasicMaterial({
                     color: portalColor,
                     transparent: true,
-                    opacity: 0.15,
-                    side: THREE.BackSide
+                    opacity: 0.3,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide
                 });
                 const outerGlow = new THREE.Mesh(outerGlowGeometry, outerGlowMaterial);
                 exitPortal.add(outerGlow);
-                
-                // Add Tron-style label above the portal
+
+                // Add spiky effect around the portal with the specified color
+                const spikeCount = 16;
+                for (let i = 0; i < spikeCount; i++) {
+                    const angle = (i / spikeCount) * Math.PI * 2;
+                    const spikeLength = 0.2 + Math.random() * 0.2;
+                    const spikeGeometry = new THREE.BufferGeometry();
+                    const vertices = new Float32Array([
+                        0, 0, 0,
+                        Math.cos(angle) * spikeLength, Math.sin(angle) * spikeLength, 0,
+                        Math.cos(angle + 0.1) * spikeLength, Math.sin(angle + 0.1) * spikeLength, 0
+                    ]);
+                    spikeGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                    const spikeMaterial = new THREE.MeshBasicMaterial({
+                        color: portalColor,
+                        transparent: true,
+                        opacity: 0.5,
+                        side: THREE.DoubleSide,
+                        blending: THREE.AdditiveBlending
+                    });
+                    const spike = new THREE.Mesh(spikeGeometry, spikeMaterial);
+                    spike.position.set(
+                        Math.cos(angle) * portalRadius,
+                        Math.sin(angle) * portalRadius,
+                        0.02
+                    );
+                    spike.userData = {
+                        initialScale: 1,
+                        pulseSpeed: 2 + Math.random()
+                    };
+                    exitPortal.add(spike);
+                }
+
+                // Add the label with neon effect matching the portal color
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
-                canvas.width = 1024; // Increased for better text clarity
-                canvas.height = 256; // Increased for better text clarity
+                canvas.width = 1024;
+                canvas.height = 256;
                 
-                // Set up the text style for Tron look
                 context.fillStyle = 'rgba(0, 0, 0, 0)';
                 context.fillRect(0, 0, canvas.width, canvas.height);
                 
-                // Create gradient for Tron glow effect
-                const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
-                gradient.addColorStop(0, 'rgba(0, 255, 255, 0.8)');
-                gradient.addColorStop(0.5, 'rgba(0, 255, 255, 1)');
-                gradient.addColorStop(1, 'rgba(0, 255, 255, 0.8)');
-                
-                context.fillStyle = gradient;
-                context.strokeStyle = '#FFFFFF';
-                context.lineWidth = 4; // Thicker lines for better visibility
-                context.font = 'bold 72px "Arial", sans-serif'; // Much larger font for readability
+                // Create clearer text with moderate glow
+                context.fillStyle = '#ffffff'; // White base for better visibility
+                context.font = 'bold 72px "Arial", sans-serif';
                 context.textAlign = 'center';
                 context.textBaseline = 'middle';
                 
-                // Add text with glow effect
-                context.fillText(label, canvas.width / 2, canvas.height / 2);
-                context.strokeText(label, canvas.width / 2, canvas.height / 2);
+                // Convert portal color to CSS color string for canvas
+                const colorHex = '#' + portalColor.toString(16).padStart(6, '0');
                 
-                // Create texture from canvas
+                // Add glow layers with the specified color
+                context.shadowColor = colorHex;
+                context.shadowBlur = 15;
+                context.fillText(label, canvas.width / 2, canvas.height / 2); // Base text
+                
+                // Add a moderate outer glow
+                context.shadowBlur = 8;
+                context.fillStyle = colorHex;
+                context.fillText(label, canvas.width / 2, canvas.height / 2);
+                
+                // Add final sharp text on top
+                context.shadowBlur = 0;
+                context.fillStyle = '#ffffff';
+                context.fillText(label, canvas.width / 2, canvas.height / 2);
+                
                 const texture = new THREE.CanvasTexture(canvas);
                 const labelMaterial = new THREE.MeshBasicMaterial({
                     map: texture,
                     transparent: true,
-                    side: THREE.DoubleSide
+                    side: THREE.DoubleSide,
+                    blending: THREE.AdditiveBlending
                 });
                 
-                // Create label mesh - make it wider to accommodate the text
-                const labelGeometry = new THREE.PlaneGeometry(2.5, 0.6); // Increased width and height for better visibility
+                const labelGeometry = new THREE.PlaneGeometry(2.5, 0.6);
                 const labelMesh = new THREE.Mesh(labelGeometry, labelMaterial);
-                labelMesh.position.set(0, portalRadius * 1.8, 0.05); // Position higher above the portal for better visibility
+                labelMesh.position.set(0, portalRadius * 1.8, 0.05);
                 exitPortal.add(labelMesh);
-                
-                // Add particles around the portal
-                const particleCount = 12;
-                for (let i = 0; i < particleCount; i++) {
-                    const angle = (i / particleCount) * Math.PI * 2;
-                    const distance = portalRadius * 1.3 + Math.random() * 0.3;
-                    const particleSize = 0.05 + Math.random() * 0.1;
-                    
-                    const particleGeometry = new THREE.CircleGeometry(particleSize, 8);
-                    const particleMaterial = new THREE.MeshBasicMaterial({
-                        color: innerColor,
-                        transparent: true,
-                        opacity: 0.4 + Math.random() * 0.4
-                    });
-                    
-                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-                    particle.position.set(
-                        Math.cos(angle) * distance,
-                        Math.sin(angle) * distance,
-                        0.03
-                    );
-                    
-                    // Store initial position for animation
-                    particle.userData = {
-                        initialX: particle.position.x,
-                        initialY: particle.position.y,
-                        speed: 0.01 + Math.random() * 0.02,
-                        angle: Math.random() * Math.PI * 2
-                    };
-                    
-                    // Animate particles
-                    const animateParticle = () => {
-                        particle.position.x = particle.userData.initialX + Math.sin(particle.userData.angle) * 0.1;
-                        particle.position.y = particle.userData.initialY + Math.cos(particle.userData.angle) * 0.1;
-                        particle.userData.angle += particle.userData.speed;
-                        
-                        requestAnimationFrame(animateParticle);
-                    };
-                    
-                    animateParticle();
-                    exitPortal.add(particle);
-                }
-            
+
+                // Add animation data
+                exitPortal.userData.animationData = {
+                    time: 0,
+                    pulseSpeed: 2
+                };
+
                 this.scene.add(exitPortal);
                 this.obstacles.push(exitPortal);
             }
