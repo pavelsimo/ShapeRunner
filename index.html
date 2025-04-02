@@ -1446,6 +1446,9 @@
                     const light = new THREE.AmbientLight(0xFFFFFF, 1);
                     this.scene.add(light);
 
+                    // Initialize object pools before creating any objects
+                    this.initObjectPools();
+                    
                     this.createGrid();
                     this.createPlayer();
                     this.createLevel();
@@ -1683,10 +1686,160 @@
                 document.getElementById('level-display').style.textShadow =
                     `0 0 10px ${theme.levelGlow}, 0 0 20px ${theme.levelGlow}, 0 0 30px ${theme.levelGlow}`;
 
-                // Generate and parse the level data
+                // Generate level data
                 const levelData = this.levelManager.generateLevel(this.levelManager.currentLevel, 2);
-                this.parseLevel(levelData);
-
+                
+                // Create loading message
+                this.showLoadingMessage();
+                
+                // Parse the level data progressively using requestAnimationFrame
+                this.progressiveParseLevelData(levelData);
+            }
+            
+            showLoadingMessage() {
+                if (!this.loadingMessage) {
+                    this.loadingMessage = document.createElement('div');
+                    this.loadingMessage.style.position = 'absolute';
+                    this.loadingMessage.style.top = '50%';
+                    this.loadingMessage.style.left = '50%';
+                    this.loadingMessage.style.transform = 'translate(-50%, -50%)';
+                    this.loadingMessage.style.color = '#fff';
+                    this.loadingMessage.style.fontSize = '24px';
+                    this.loadingMessage.style.fontFamily = "'Press Start 2P', monospace";
+                    this.loadingMessage.style.textShadow = '0 0 10px #00f, 0 0 20px #00f, 0 0 30px #00f';
+                    this.loadingMessage.style.zIndex = 1000;
+                    document.body.appendChild(this.loadingMessage);
+                }
+                this.loadingMessage.textContent = 'LOADING...';
+                this.loadingMessage.style.display = 'block';
+            }
+            
+            hideLoadingMessage() {
+                if (this.loadingMessage) {
+                    this.loadingMessage.style.display = 'none';
+                }
+            }
+            
+            // Object pools for tile reuse
+            initObjectPools() {
+                if (!this.objectPools) {
+                    this.objectPools = {
+                        platforms: [],
+                        obstacles: [],
+                        collectibles: [],
+                        floors: []
+                    };
+                }
+            }
+            
+            getFromPool(type, createFn) {
+                this.initObjectPools();
+                
+                const pool = this.objectPools[type];
+                if (pool.length > 0) {
+                    const object = pool.pop();
+                    object.visible = true;
+                    return object;
+                }
+                
+                return createFn();
+            }
+            
+            returnToPool(object, type) {
+                this.initObjectPools();
+                
+                if (object) {
+                    object.visible = false;
+                    this.objectPools[type].push(object);
+                }
+            }
+            
+            progressiveParseLevelData(levelData) {
+                const rows = levelData.split("\n");
+                const tileSpacing = 1;
+                const totalCols = rows[0].length;
+                
+                // Load first 8 tiles immediately
+                const immediateCols = 8;
+                let xPos = -40;
+                
+                // Process immediate tiles
+                for (let col = 0; col < immediateCols; col++) {
+                    for (let row = 0; row < rows.length; row++) {
+                        const invertedRow = rows.length - 1 - row;
+                        const char = rows[invertedRow][col];
+                        const yPos = this.groundY + row * tileSpacing;
+                        const isBottomRow = (row === 0);
+                        
+                        // Create the tile (including floor tiles)
+                        this.createTile(char, xPos, yPos, isBottomRow);
+                    }
+                    xPos += tileSpacing;
+                }
+                
+                // Force immediate render to show initial tiles
+                this.renderer.render(this.scene, this.camera);
+                
+                // Prepare parse state for remaining tiles
+                this.parseState = {
+                    rows,
+                    tileSpacing,
+                    xPos: -40 + (immediateCols * tileSpacing),
+                    currentCol: immediateCols,
+                    totalCols,
+                    batchSize: 15, // Process 15 columns per frame
+                    complete: false
+                };
+                
+                // Start progressive loading for remaining tiles
+                requestAnimationFrame(() => this.progressiveLoadStep());
+            }
+            
+            progressiveLoadStep() {
+                const state = this.parseState;
+                if (!state || state.complete) return;
+                
+                const startCol = state.currentCol;
+                const endCol = Math.min(startCol + state.batchSize, state.totalCols);
+                const rows = state.rows;
+                
+                // Process the next batch of columns
+                for (let col = startCol; col < endCol; col++) {
+                    let xPos = state.xPos + (col - startCol);
+                    for (let row = 0; row < rows.length; row++) {
+                        const invertedRow = rows.length - 1 - row;
+                        const char = rows[invertedRow][col];
+                        const yPos = this.groundY + row * state.tileSpacing;
+                        const isBottomRow = (row === 0);
+                        
+                        // Create the tile (including floor tiles)
+                        this.createTile(char, xPos, yPos, isBottomRow);
+                    }
+                }
+                
+                // Update state
+                state.currentCol = endCol;
+                state.xPos += state.batchSize;
+                
+                // Update loading progress
+                const progress = Math.min(100, Math.floor((state.currentCol / state.totalCols) * 100));
+                if (this.loadingMessage) {
+                    this.loadingMessage.textContent = `LOADING... ${progress}%`;
+                }
+                
+                // Check if we've processed all columns
+                if (state.currentCol >= state.totalCols) {
+                    state.complete = true;
+                    this.finalizeLevel();
+                    this.hideLoadingMessage();
+                    return;
+                }
+                
+                // Schedule next batch
+                requestAnimationFrame(() => this.progressiveLoadStep());
+            }
+            
+            finalizeLevel() {
                 // Position player at the beginning of the level
                 // Default to left side if no start marker is found
                 if (!this.startPosition) {
@@ -1736,8 +1889,8 @@
                 const theme = this.getTheme();
                 const platformHeight = 1;
 
-                // Skip B blocks in bottom row as they'll be part of the main floor
-                if (isBottomRow && type === 'B') return;
+                // Remove the early return for bottom row B blocks
+                // if (isBottomRow && type === 'B') return;
 
                 // Helper function to properly dispose materials and geometries
                 const disposeMesh = (mesh) => {
@@ -1752,34 +1905,48 @@
                 };
 
                 switch (type) {
-                    case 'B':
-                    case 'M':
-                    case 'W':
-                        const platformGeometry = new THREE.BoxGeometry(1, 1, 1);
+                    case 'B': {
+                        // Create platform block
+                        const platformGeometry = new THREE.BoxGeometry(1, platformHeight, 1);
                         const platformMaterial = new THREE.MeshBasicMaterial({
                             color: theme.platform,
                             transparent: true,
-                            opacity: 0.8
+                            opacity: 0.6
                         });
+
                         const platform = new THREE.Mesh(platformGeometry, platformMaterial);
-                        // Position platform in center of grid cell
                         platform.position.set(x, y + platformHeight / 2, 0);
                         platform.userData = {
-                            type: type === 'M' ? 'movingPlatformVertical' : 
-                                  type === 'W' ? 'movingPlatformHorizontal' : 'platform',
-                            width: 1, 
-                            height: 1,
-                            startPos: { x: x, y: y + platformHeight / 2 },
-                            moveTime: 0,
-                            moveSpeed: 2 // Complete one cycle every 2 seconds
+                            type: 'platform',
+                            width: 1,
+                            height: platformHeight
                         };
-                        this.scene.add(platform);
-                        this.platforms.push(platform);
+
+                        // Add edges
                         const edges = new THREE.EdgesGeometry(platformGeometry);
-                        const lineMaterial = new THREE.LineBasicMaterial({color: theme.platformEdge, linewidth: 2});
+                        const lineMaterial = new THREE.LineBasicMaterial({
+                            color: theme.platformEdge,
+                            linewidth: 2
+                        });
                         const wireframe = new THREE.LineSegments(edges, lineMaterial);
                         platform.add(wireframe);
+
+                        // Add glow effect
+                        const glowGeometry = new THREE.BoxGeometry(1, 0.05, 1.5);
+                        const glowMaterial = new THREE.MeshBasicMaterial({
+                            color: theme.platformEdge,
+                            transparent: true,
+                            opacity: 0.3,
+                            blending: THREE.AdditiveBlending
+                        });
+                        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                        glow.position.y = -0.5;
+                        platform.add(glow);
+
+                        this.scene.add(platform);
+                        this.platforms.push(platform);
                         break;
+                    }
                     case '^':
                         // Handle all upward spikes consistently - position them at the grid cell y-coordinate
                         // The base of the spike will be at exactly y, and the top will be at y + spikeSize
@@ -2184,49 +2351,83 @@
 
                 // Create individual floor tiles instead of one continuous floor
                 const theme = this.getTheme();
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshBasicMaterial({
+                    color: theme.platform,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                
+                // Batch floor creation
+                const batchSize = 50;
+                const createFloorBatch = (startIdx) => {
+                    const endIdx = Math.min(startIdx + batchSize, this.floorTilePositions.length);
+                    
+                    for (let i = startIdx; i < endIdx; i++) {
+                        const xPos = this.floorTilePositions[i];
+                        
+                        // Try to reuse an existing floor tile from the pool
+                        let groundTile = this.getFromPool('floors', () => {
+                            const tile = new THREE.Mesh(geometry, material.clone());
+                            
+                            // Add the edges only when creating a new tile
+                            const groundEdges = new THREE.EdgesGeometry(geometry);
+                            const groundLineMaterial = new THREE.LineBasicMaterial({
+                                color: theme.platformEdge,
+                                linewidth: 2
+                            });
+                            const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
+                            tile.add(groundWireframe);
+                            
+                            // Add subtle glow effect
+                            const groundGlowGeometry = new THREE.BoxGeometry(1, 0.05, 1.5);
+                            const groundGlowMaterial = new THREE.MeshBasicMaterial({
+                                color: theme.platformEdge,
+                                transparent: true,
+                                opacity: 0.3,
+                                blending: THREE.AdditiveBlending
+                            });
+                            const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
+                            groundGlow.position.y = -0.5;
+                            tile.add(groundGlow);
+                            
+                            return tile;
+                        });
+                        
+                        // Update position and material color for reused tiles
+                        groundTile.position.set(xPos, this.groundY + 0.5, 0);
+                        if (groundTile.material) {
+                            groundTile.material.color.set(theme.platform);
+                        }
+                        
+                        // Update edge colors
+                        if (groundTile.children[0]) {
+                            groundTile.children[0].material.color.set(theme.platformEdge);
+                        }
+                        
+                        // Update glow colors
+                        if (groundTile.children[1]) {
+                            groundTile.children[1].material.color.set(theme.platformEdge);
+                        }
+                        
+                        groundTile.userData = {
+                            type: 'platform',
+                            width: 1,
+                            height: 1
+                        };
 
-                for (let xPos of this.floorTilePositions) {
-                    const groundGeometry = new THREE.BoxGeometry(1, 1, 1);
-                    const groundMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.platform,
-                        transparent: true,
-                        opacity: 0.6
-                    });
-
-                    const groundTile = new THREE.Mesh(groundGeometry, groundMaterial);
-                    groundTile.position.set(xPos, this.groundY + 0.5, 0);
-                    groundTile.userData = {
-                        type: 'platform',
-                        width: 1,
-                        height: 1
-                    };
-
-                    this.scene.add(groundTile);
-                    this.platforms.push(groundTile);
-
-                    const groundEdges = new THREE.EdgesGeometry(groundGeometry);
-                    const groundLineMaterial = new THREE.LineBasicMaterial({
-                        color: theme.platformEdge,
-                        linewidth: 2
-                    });
-                    const groundWireframe = new THREE.LineSegments(groundEdges, groundLineMaterial);
-                    groundTile.add(groundWireframe);
-
-                    // Add subtle glow effect to each tile
-                    const groundGlowGeometry = new THREE.BoxGeometry(1, 0.05, 1.5);
-                    const groundGlowMaterial = new THREE.MeshBasicMaterial({
-                        color: theme.platformEdge,
-                        transparent: true,
-                        opacity: 0.15,
-                        blending: THREE.AdditiveBlending
-                    });
-                    const groundGlow = new THREE.Mesh(groundGlowGeometry, groundGlowMaterial);
-                    groundGlow.position.y = 0.3;
-                    groundTile.add(groundGlow);
-                }
-
-                // We no longer store a reference to a single ground object
-                this.ground = null;
+                        this.scene.add(groundTile);
+                        this.platforms.push(groundTile);
+                    }
+                    
+                    // If there are more floor tiles to process, schedule the next batch
+                    if (endIdx < this.floorTilePositions.length) {
+                        setTimeout(() => createFloorBatch(endIdx), 0);
+                    }
+                };
+                
+                // Start creating floor tiles in batches
+                createFloorBatch(0);
             }
 
             handleKeyDown(event) {
@@ -3635,6 +3836,10 @@
             clearLevel() {
                 // Clean up visual effects first
                 this.cleanupVisualEffects();
+                
+                // Flag to determine if we need to fully dispose (for level changes)
+                // or just hide and reuse (for performance)
+                const fullDispose = this.platforms && this.platforms.length > 500;
 
                 // Helper function to properly dispose of materials and geometries
                 const disposeMesh = (object) => {
@@ -3677,7 +3882,13 @@
                 if (this.platforms) {
                     this.platforms.forEach(platform => {
                         if (platform && platform.parent) {
-                            disposeMesh(platform);
+                            if (fullDispose) {
+                                disposeMesh(platform);
+                            } else {
+                                // Return to object pool instead of disposing
+                                this.scene.remove(platform);
+                                this.returnToPool(platform, 'platforms');
+                            }
                         }
                     });
                     this.platforms = [];
@@ -3686,7 +3897,13 @@
                 if (this.obstacles) {
                     this.obstacles.forEach(obstacle => {
                         if (obstacle && obstacle.parent) {
-                            disposeMesh(obstacle);
+                            if (fullDispose) {
+                                disposeMesh(obstacle);
+                            } else {
+                                // Return to object pool
+                                this.scene.remove(obstacle);
+                                this.returnToPool(obstacle, 'obstacles');
+                            }
                         }
                     });
                     this.obstacles = [];
@@ -3695,7 +3912,13 @@
                 if (this.collectibles) {
                     this.collectibles.forEach(coin => {
                         if (coin && coin.parent) {
-                            disposeMesh(coin);
+                            if (fullDispose) {
+                                disposeMesh(coin);
+                            } else {
+                                // Return to object pool
+                                this.scene.remove(coin);
+                                this.returnToPool(coin, 'collectibles');
+                            }
                         }
                     });
                     this.collectibles = [];
@@ -3709,6 +3932,15 @@
 
                 // Clear floor tile positions
                 this.floorTilePositions = [];
+
+                // Force garbage collection when switching levels
+                if (fullDispose && window.gc) {
+                    try {
+                        window.gc();
+                    } catch (e) {
+                        // Garbage collection not available
+                    }
+                }
 
                 this.clearGrids();
                 this.updateUITheme();
