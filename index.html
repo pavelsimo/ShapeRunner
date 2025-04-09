@@ -1692,6 +1692,13 @@
                 // Create loading message
                 this.showLoadingMessage();
                 
+                // Set initial player position before loading starts
+                this.player.position.set(-39, this.groundY + 1.0 + this.playerSize / 2, 0);
+                this.playerVelocity.x = this.baseVelocity;
+                this.playerVelocity.y = 0;
+                this.isJumping = false;
+                this.onGround = true;
+                
                 // Parse the level data progressively using requestAnimationFrame
                 this.progressiveParseLevelData(levelData);
             }
@@ -1840,25 +1847,18 @@
             }
             
             finalizeLevel() {
-                // Position player at the beginning of the level
-                // Default to left side if no start marker is found
-                if (!this.startPosition) {
-                    // Position at the far left of the level 
-                    // (level starts around -40 based on parseLevel xPos initialization)
-                    this.player.position.set(-39, this.groundY + 1.0 + this.playerSize / 2, 0);
-                } else {
-                    // Use the start position from the level 
-                    this.player.position.set(this.startPosition.x, this.startPosition.y + this.playerSize / 2, 0);
-                }
-
-                // Reset velocities and ensure player is on ground
-                this.playerVelocity.x = this.baseVelocity;
-                this.playerVelocity.y = 0;
-                this.isJumping = false;
-                this.onGround = true;
-
-                // Log completion
-                logDebug("Level created");
+                // Don't modify player position since we already set it at the start of createLevel()
+                // Just log completion and update any necessary UI elements
+                logDebug("Level loading complete");
+                
+                // Ensure the player is properly shown in the correct position
+                this.player.visible = true;
+                
+                // Update any UI elements that depend on the completed level
+                this.updateUITheme();
+                
+                // Make sure to render the scene with the final elements
+                this.renderer.render(this.scene, this.camera);
             }
 
             parseLevel(levelData) {
@@ -2579,8 +2579,8 @@
                         const outerGlow = obstacle.children.find(child => 
                             child.geometry instanceof THREE.CircleGeometry);
                         if (outerGlow) {
-                            const pulseScale = 1 + Math.sin(time * 3) * 0.1;
-                            outerGlow.scale.set(pulseScale, pulseScale, 1);
+                            const glowScale = 1 + Math.sin(time * 2) * 0.1;
+                            outerGlow.scale.set(glowScale, glowScale, 1);
                         }
                     }
                 });
@@ -2647,6 +2647,7 @@
                     }
                 });
 
+                // Update player position with CORRECT gravity (negative to pull down)
                 this.playerVelocity.y -= this.gravity * deltaTime;
                 this.playerVelocity.y = Math.max(this.playerVelocity.y, -30);
                 if (this.playerVelocity.x < this.baseVelocity) {
@@ -2654,6 +2655,12 @@
                 }
                 this.player.position.x += this.playerVelocity.x * deltaTime;
                 this.player.position.y += this.playerVelocity.y * deltaTime;
+
+                // Update camera position to follow player smoothly
+                const targetX = this.player.position.x;
+                const currentX = this.camera.position.x;
+                const cameraSpeed = 10; // Adjust this value to control camera follow speed
+                this.camera.position.x += (targetX - currentX) * cameraSpeed * deltaTime;
 
                 // Only update score if game is not over
                 if (!this.gameOverUI.style.display || this.gameOverUI.style.display === 'none') {
